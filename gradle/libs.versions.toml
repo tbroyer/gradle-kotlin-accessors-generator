@@ -1,0 +1,40 @@
+# Try to keep each section sorted alphabetically (with some exceptions to group entries together)
+[versions]
+autoService = "1.1.1"
+incapHelper = "1.0.0"
+junitJupiter = "6.0.3"
+kotlin = "2.3.20"
+nullaway = "0.13.1"
+
+# Versions used by build-logic
+googleJavaFormat = "1.35.0"
+ktlint = "1.8.0"
+
+[libraries]
+autoService-annotations = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
+autoService-processor = { module = "com.google.auto.service:auto-service", version.ref = "autoService" }
+compileTesting = "com.google.testing.compile:compile-testing:0.23.0"
+incapHelper-annotations = { module = "net.ltgt.gradle.incap:incap", version.ref = "incapHelper" }
+incapHelper-processor = { module = "net.ltgt.gradle.incap:incap-processor", version.ref = "incapHelper" }
+jspecify = "org.jspecify:jspecify:1.0.0"
+kotlin-metadata-jvm = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
+truth = "com.google.truth:truth:1.4.5"
+
+# Versions used in build-logic, libraries added here for Dependabot
+googleJavaFormat = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
+junitJupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref="junitJupiter" }
+ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
+
+# Used in below bundle
+errorprone-core = "com.google.errorprone:error_prone_core:2.48.0"
+nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
+
+[bundles]
+# Used by build-logic
+errorprone = [ "errorprone-core", "nullaway" ]
+
+[plugins]
+errorprone = "net.ltgt.errorprone:5.1.0"
+jvmDependencyConflictResolution = "org.gradlex.jvm-dependency-conflict-resolution:2.5"
+nullaway = "net.ltgt.nullaway:3.0.0"
+spotless = "com.diffplug.spotless:8.4.0"
