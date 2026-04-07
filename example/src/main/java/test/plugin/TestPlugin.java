@@ -60,7 +60,7 @@ public class TestPlugin implements Plugin<Project> {
     project
         .getPluginManager()
         .withPlugin(
-            "distribution-base",
+            "distribution",
             ignored -> {
               project
                   .getExtensions()
