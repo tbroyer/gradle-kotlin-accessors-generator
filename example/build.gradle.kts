@@ -8,8 +8,6 @@ plugins {
 
 tasks {
     compileJava {
-        options.release = 11
-
         options.compilerArgs.add("-Anet.ltgt.gradle.kotlin.accessors.generator.kotlinModuleName=testPlugin")
 
         shouldRunAfter("${project.projects.processor.path}:test")

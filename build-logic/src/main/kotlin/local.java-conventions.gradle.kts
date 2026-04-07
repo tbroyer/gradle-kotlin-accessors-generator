@@ -61,6 +61,14 @@ tasks.withType<JavaCompile>().configureEach {
     }
 }
 
+tasks {
+    compileJava {
+        options.release = 8
+        // release=8 is deprecated starting with JDK 21
+        options.compilerArgs.add("-Xlint:all,-options")
+    }
+}
+
 testing {
     suites {
         withType<JvmTestSuite> {

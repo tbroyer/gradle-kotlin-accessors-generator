@@ -3,11 +3,6 @@ plugins {
     id("local.java-conventions")
 }
 
-tasks {
-    compileJava {
-        options.release = 11
-    }
-}
 dependencies {
     compileOnlyApi(libs.jetbrains.annotations)
 
