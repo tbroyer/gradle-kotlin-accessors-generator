@@ -307,7 +307,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
               switch (c) {
                 case '"':
                 case '\\':
-                  return "\\" + Character.toString(c);
+                  return "\\" + Character.toString((char) c);
                 case '\n':
                   return "\\n";
                 case '\r':
@@ -317,7 +317,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
                 default:
                   return isISOControl(c)
                       ? String.format(Locale.ROOT, "\\u%04x", c)
-                      : Character.toString(c);
+                      : Character.toString((char) c);
               }
             })
         .collect(Collectors.joining("", "\"", "\""));
