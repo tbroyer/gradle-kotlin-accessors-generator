@@ -9,7 +9,7 @@ tasks {
     }
 }
 dependencies {
-    compileOnlyApi(libs.jspecify)
+    compileOnlyApi(libs.jetbrains.annotations)
 
     implementation(projects.annotations)
     implementation(libs.kotlin.metadata.jvm)

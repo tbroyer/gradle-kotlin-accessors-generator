@@ -44,7 +44,7 @@ dependencies {
 }
 
 nullaway {
-    onlyNullMarked = true
+    annotatedPackages.addAll("net.ltgt.gradle.kotlin.accessors.generator", "test.plugin")
     jspecifyMode = true
 }
 
@@ -54,7 +54,6 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.addAll(listOf("-Werror", "-Xlint:all,-fallthrough,-processing"))
     options.errorprone {
         enable("DefaultLocale")
-        error("RequireExplicitNullMarking")
         error("WildcardImport")
         // XXX: text blocks aren't supported in --release 8
         // https://github.com/google/error-prone/issues/4931

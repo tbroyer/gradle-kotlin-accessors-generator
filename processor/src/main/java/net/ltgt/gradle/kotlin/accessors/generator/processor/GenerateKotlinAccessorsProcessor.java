@@ -68,7 +68,7 @@ import kotlin.metadata.jvm.KotlinModuleMetadata;
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessor;
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType;
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 @AutoService(Processor.class)
 @IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.AGGREGATING)

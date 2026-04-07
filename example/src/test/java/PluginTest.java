@@ -19,11 +19,9 @@ import java.util.Optional;
 import java.util.Properties;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.util.GradleVersion;
-import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@NullMarked
 public class PluginTest {
   public static final GradleVersion testGradleVersion =
       Optional.ofNullable(System.getProperty("test.gradle-version"))

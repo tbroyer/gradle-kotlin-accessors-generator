@@ -19,8 +19,6 @@ tasks {
 dependencies {
     compileOnly(projects.annotations)
     annotationProcessor(projects.processor)
-
-    compileOnly(libs.jspecify)
 }
 
 gradlePlugin {
