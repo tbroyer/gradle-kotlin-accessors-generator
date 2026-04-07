@@ -1,4 +1,4 @@
-@NullMarked
+@NotNullByDefault
 package test.plugin;
 
-import org.jspecify.annotations.NullMarked;
+import org.jetbrains.annotations.NotNullByDefault;

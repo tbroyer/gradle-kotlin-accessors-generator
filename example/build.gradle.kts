@@ -20,7 +20,7 @@ dependencies {
     compileOnly(projects.annotations)
     annotationProcessor(projects.processor)
 
-    compileOnly(libs.jspecify)
+    compileOnly(libs.jetbrains.annotations)
 }
 
 gradlePlugin {
