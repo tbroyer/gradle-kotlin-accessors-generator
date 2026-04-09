@@ -16,7 +16,7 @@ autoService-processor = { module = "com.google.auto.service:auto-service", versi
 compileTesting = "com.google.testing.compile:compile-testing:0.23.0"
 incapHelper-annotations = { module = "net.ltgt.gradle.incap:incap", version.ref = "incapHelper" }
 incapHelper-processor = { module = "net.ltgt.gradle.incap:incap-processor", version.ref = "incapHelper" }
-jetbrains-annotations = "org.jetbrains:annotations:13.0"
+jetbrains-annotations = "org.jetbrains:annotations:26.1.0"
 kotlin-metadata-jvm = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
 truth = "com.google.truth:truth:1.4.5"
 
