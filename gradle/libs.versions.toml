@@ -26,7 +26,7 @@ junitJupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref
 ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 
 # Used in below bundle
-errorprone-core = "com.google.errorprone:error_prone_core:2.48.0"
+errorprone-core = "com.google.errorprone:error_prone_core:2.49.0"
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 
 [bundles]
