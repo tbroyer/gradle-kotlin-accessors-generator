@@ -30,7 +30,10 @@ class GenerateKotlinAccessorsProcessorTest {
     var compilation =
         Compiler.javac()
             .withProcessors(new GenerateKotlinAccessorsProcessor())
-            .withOptions("-A%s=foo".formatted(GenerateKotlinAccessorsProcessor.KOTLIN_MODULE_NAME))
+            .withOptions(
+                "--release=8",
+                "-Xlint:-options", // release=8 is deprecated starting with JDK 21
+                "-A%s=foo".formatted(GenerateKotlinAccessorsProcessor.KOTLIN_MODULE_NAME))
             .compile(
                 JavaFileObjects.forSourceString(
                     "pkg.Foo",
