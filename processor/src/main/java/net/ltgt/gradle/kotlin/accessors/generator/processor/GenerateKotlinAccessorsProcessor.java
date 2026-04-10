@@ -30,7 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.processing.AbstractProcessor;
@@ -43,7 +42,6 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.MirroredTypesException;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
@@ -142,18 +140,19 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       if (!checkAnnotatedElement(e)) {
         continue;
       }
-      GenerateKotlinAccessors annotation =
-          requireNonNull(e.getAnnotation(GenerateKotlinAccessors.class));
-      if (!SourceVersion.isIdentifier(annotation.name())
-          || SourceVersion.isKeyword(annotation.name() /*, processingEnv.getSourceVersion()*/)) {
-        error(ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier", e, "name");
+      AnnotationMirror annotation = getAnnotationMirror(e);
+      String extensionName = getExtensionName(e, annotation);
+      if (extensionName == null) {
+        continue;
       }
       List<? extends TypeMirror> receivers = getReceivers(annotation);
-      // TODO: check receivers; possibly defer generation if there's an ErrorType
+      if (receivers == null) {
+        continue;
+      }
       String className =
           generateKotlinExtensions(
               (TypeElement) e,
-              annotation.name(),
+              extensionName,
               receivers.stream()
                   .map(processingEnv.getTypeUtils()::asElement)
                   .map(TypeElement.class::cast)
@@ -180,6 +179,28 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         // Let JavaC emit the error when checking the @Target(TYPE)
         return false;
     }
+  }
+
+  private @Nullable String getExtensionName(Element e, AnnotationMirror annotation) {
+    AnnotationValue annotationValue = getAnnotationValue(annotation, "name");
+    if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
+      // Let JavaC emit the error for the missing attribute or bad type
+      return null;
+    }
+    String extensionName = (String) annotationValue.getValue();
+    if (!SourceVersion.isIdentifier(extensionName)
+        || SourceVersion.isKeyword(extensionName /*, processingEnv.getSourceVersion()*/)) {
+      processingEnv
+          .getMessager()
+          .printMessage(
+              Kind.ERROR,
+              ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier",
+              e,
+              annotation,
+              annotationValue);
+      return null;
+    }
+    return extensionName;
   }
 
   private String generateKotlinExtensions(
@@ -290,12 +311,23 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         .replace('$', '.');
   }
 
-  private static List<? extends TypeMirror> getReceivers(GenerateKotlinAccessors annotation) {
+  @SuppressWarnings("unchecked")
+  private static @Nullable List<? extends TypeMirror> getReceivers(AnnotationMirror annotation) {
+    AnnotationValue receivers = getAnnotationValue(annotation, "receivers");
+    if (receivers == null || !(receivers.getValue() instanceof List)) {
+      // Let JavaC emit the error for the missing attribute or bad type
+      return null;
+    }
     try {
-      annotation.receivers();
-      throw new AssertionError();
-    } catch (MirroredTypesException e) {
-      return e.getTypeMirrors();
+      // TODO: check receivers; possibly defer generation if there's an ErrorType
+      return ((List<? extends AnnotationValue>) receivers.getValue())
+          .stream()
+              .map(AnnotationValue::getValue)
+              .map(TypeMirror.class::cast)
+              .collect(Collectors.toList());
+    } catch (ClassCastException ignored) {
+      // Let JavaC emit the error for the bad type
+      return null;
     }
   }
 
@@ -350,31 +382,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     }
   }
 
-  @SuppressWarnings("unused")
-  private void error(String msg, Element element) {
-    error(msg, element, null);
-  }
-
-  private void error(String msg, Element element, @Nullable String value) {
-    message(Kind.ERROR, msg, element, value);
-  }
-
-  @SuppressWarnings("unused")
-  private void warning(String msg, Element element) {
-    warning(msg, element, null);
-  }
-
-  private void warning(String msg, Element element, @Nullable String value) {
-    message(Kind.WARNING, msg, element, value);
-  }
-
-  private void message(Kind kind, String msg, Element element, @Nullable String value) {
-    AnnotationMirror annotation = getAnnotationMirror(element);
-    AnnotationValue annotationValue = getAnnotationValue(annotation, value);
-    processingEnv.getMessager().printMessage(kind, msg, element, annotation, annotationValue);
-  }
-
-  private AnnotationMirror getAnnotationMirror(Element element) {
+  private static AnnotationMirror getAnnotationMirror(Element element) {
     return element.getAnnotationMirrors().stream()
         .filter(
             annotationMirror ->
@@ -385,15 +393,12 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         .orElseThrow(IllegalArgumentException::new);
   }
 
-  private @Nullable AnnotationValue getAnnotationValue(
-      AnnotationMirror annotation, @Nullable String value) {
-    return Optional.ofNullable(value)
-        .flatMap(
-            v ->
-                annotation.getElementValues().entrySet().stream()
-                    .filter(entry -> entry.getKey().getSimpleName().contentEquals(v))
-                    .map(Map.Entry::getValue)
-                    .findFirst())
+  private static @Nullable AnnotationValue getAnnotationValue(
+      AnnotationMirror annotation, String value) {
+    return annotation.getElementValues().entrySet().stream()
+        .filter(entry -> entry.getKey().getSimpleName().contentEquals(value))
+        .map(Map.Entry::getValue)
+        .findFirst()
         .orElse(null);
   }
 
