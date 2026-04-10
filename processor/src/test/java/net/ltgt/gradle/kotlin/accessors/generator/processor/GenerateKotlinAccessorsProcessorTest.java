@@ -25,15 +25,19 @@ import javax.tools.StandardLocation;
 import org.junit.jupiter.api.Test;
 
 class GenerateKotlinAccessorsProcessorTest {
+  private Compiler getCompiler() {
+    return Compiler.javac()
+        .withProcessors(new GenerateKotlinAccessorsProcessor())
+        .withOptions(
+            "--release=8",
+            "-Xlint:-options", // release=8 is deprecated starting with JDK 21
+            "-A%s=foo".formatted(GenerateKotlinAccessorsProcessor.KOTLIN_MODULE_NAME));
+  }
+
   @Test
-  public void test() {
+  void test() {
     var compilation =
-        Compiler.javac()
-            .withProcessors(new GenerateKotlinAccessorsProcessor())
-            .withOptions(
-                "--release=8",
-                "-Xlint:-options", // release=8 is deprecated starting with JDK 21
-                "-A%s=foo".formatted(GenerateKotlinAccessorsProcessor.KOTLIN_MODULE_NAME))
+        getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
                     "pkg.Foo",
@@ -88,5 +92,81 @@ public class %1$sBar {
     // XXX: check content (?)
     assertThat(compilation)
         .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
+  }
+
+  @Test
+  void missingKotlinModuleName() {
+    var compilation =
+        getCompiler()
+            .withOptions()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {}
+"""));
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_MISSING_KOTLIN_MODULE_NAME);
+  }
+
+  @Test
+  void badExtensionName() {
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bad-name", receivers = Foo.class)
+public interface Bar {}
+""");
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {}
+"""),
+                sourceFile);
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_BAD_EXTENSION_NAME)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(33);
+  }
+
+  @Test
+  void inexistantReceiver() {
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.class)
+public interface Bar {}
+""");
+    var compilation = getCompiler().compile(sourceFile);
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(": class Foo")
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(52);
   }
 }

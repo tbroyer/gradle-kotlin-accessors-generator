@@ -72,6 +72,11 @@ import org.jetbrains.annotations.Nullable;
 @IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.AGGREGATING)
 public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
 
+  private static final String ANNOTATION_NAME = GenerateKotlinAccessors.class.getCanonicalName();
+  private static final String ANNOTATION_SIMPLE_NAME =
+      GenerateKotlinAccessors.class.getSimpleName();
+  private static final JvmMetadataVersion JVM_METADATA_VERSION = new JvmMetadataVersion(1, 4);
+
   /* @VisibleForTesting */
   static final String KOTLIN_MODULE_NAME =
       "net.ltgt.gradle.kotlin.accessors.generator.kotlinModuleName";
@@ -81,11 +86,12 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   static final String EXTENSION_AWARE = "org.gradle.api.plugins.ExtensionAware";
   /* @VisibleForTesting */
   static final String ACTION = "org.gradle.api.Action";
-
-  private static final String ANNOTATION_NAME = GenerateKotlinAccessors.class.getCanonicalName();
-  private static final String ANNOTATION_SIMPLE_NAME =
-      GenerateKotlinAccessors.class.getSimpleName();
-  private static final JvmMetadataVersion JVM_METADATA_VERSION = new JvmMetadataVersion(1, 4);
+  /* @VisibleForTesting */
+  static final String ERROR_MISSING_KOTLIN_MODULE_NAME =
+      KOTLIN_MODULE_NAME + " option must be supplied";
+  /* @VisibleForTesting */
+  static final String ERROR_BAD_EXTENSION_NAME =
+      ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier";
 
   private @Nullable String kotlinModuleName;
   private final Map<String, List<String>> packages = new LinkedHashMap<>();
@@ -110,7 +116,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     super.init(processingEnv);
     kotlinModuleName = processingEnv.getOptions().get(KOTLIN_MODULE_NAME);
     if (kotlinModuleName == null) {
-      fatalError(KOTLIN_MODULE_NAME + " option must be supplied");
+      fatalError(ERROR_MISSING_KOTLIN_MODULE_NAME);
     }
   }
 
@@ -192,12 +198,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         || SourceVersion.isKeyword(extensionName /*, processingEnv.getSourceVersion()*/)) {
       processingEnv
           .getMessager()
-          .printMessage(
-              Kind.ERROR,
-              ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier",
-              e,
-              annotation,
-              annotationValue);
+          .printMessage(Kind.ERROR, ERROR_BAD_EXTENSION_NAME, e, annotation, annotationValue);
       return null;
     }
     return extensionName;
