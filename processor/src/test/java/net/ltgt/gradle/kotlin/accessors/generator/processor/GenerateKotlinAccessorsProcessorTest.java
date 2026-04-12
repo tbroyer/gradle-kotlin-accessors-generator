@@ -23,6 +23,7 @@ import com.google.testing.compile.Compiler;
 import com.google.testing.compile.JavaFileObjects;
 import java.util.List;
 import javax.tools.StandardLocation;
+import net.ltgt.gradle.kotlin.accessors.generator.processor.GenerateKotlinAccessorsProcessor.Receiver;
 import org.junit.jupiter.api.Test;
 
 class GenerateKotlinAccessorsProcessorTest {
@@ -87,7 +88,11 @@ public class %1$sBar {
                         GenerateKotlinAccessorsProcessor.ACTION,
                         GenerateKotlinAccessorsProcessor.EXTENSION_AWARE,
                         GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
-                            /* language= */ "bar", "pkg/Bar", List.of("pkg/Foo")))));
+                            /* language= */ "bar",
+                            "pkg/Bar",
+                            "pkg/Bar",
+                            List.of(Receiver.create("pkg/Foo", "pkg/Foo")),
+                            "getBar"))));
     assertThat(compilation)
         .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
   }
@@ -146,7 +151,11 @@ public class %1$sBar {
                         GenerateKotlinAccessorsProcessor.ACTION,
                         GenerateKotlinAccessorsProcessor.EXTENSION_AWARE,
                         GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
-                            /* language= */ "bar", "pkg/Bar", List.of("pkg/Foo.Nested")))));
+                            /* language= */ "bar",
+                            "pkg/Bar",
+                            "pkg/Bar",
+                            List.of(Receiver.create("pkg/Foo.Nested", "pkg/Foo$Nested")),
+                            "getBar"))));
     // XXX: check content (?)
     assertThat(compilation)
         .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");

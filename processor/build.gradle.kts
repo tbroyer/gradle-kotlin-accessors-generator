@@ -14,6 +14,9 @@ dependencies {
 
     compileOnlyApi(libs.autoService.annotations)
     annotationProcessor(libs.autoService.processor)
+
+    compileOnlyApi(libs.autoValue.annotations)
+    annotationProcessor(libs.autoValue.processor)
 }
 
 testing {

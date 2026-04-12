@@ -19,6 +19,7 @@ import static java.lang.Character.isISOControl;
 import static java.util.Objects.requireNonNull;
 
 import com.google.auto.service.AutoService;
+import com.google.auto.value.AutoValue;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -59,7 +60,9 @@ import kotlin.metadata.KmTypeProjection;
 import kotlin.metadata.KmValueParameter;
 import kotlin.metadata.KmVariance;
 import kotlin.metadata.Visibility;
+import kotlin.metadata.jvm.JvmExtensionsKt;
 import kotlin.metadata.jvm.JvmMetadataVersion;
+import kotlin.metadata.jvm.JvmMethodSignature;
 import kotlin.metadata.jvm.KmModule;
 import kotlin.metadata.jvm.KmPackageParts;
 import kotlin.metadata.jvm.KotlinClassMetadata;
@@ -230,7 +233,11 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
             generateKotlinMetadata(
                 extensionName,
                 className(e),
-                receivers.stream().map(this::className).collect(Collectors.toList())));
+                className(processingEnv.getElementUtils().getBinaryName(e).toString()),
+                receivers.stream()
+                    .map(receiver -> Receiver.create(receiver, processingEnv))
+                    .collect(Collectors.toList()),
+                getterName));
         out.println("@org.gradle.api.Generated");
         out.println("public class " + name + " {");
         for (TypeElement receiver : receivers) {
@@ -261,14 +268,18 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
 
   @VisibleForTesting
   static String generateKotlinMetadata(
-      String extensionName, String element, List<String> receivers) {
+      String extensionName,
+      String element,
+      String elementSignatureName,
+      List<Receiver> receivers,
+      String getterName) {
     KmType elementType = new KmType();
     elementType.setClassifier(new KmClassifier.Class(element));
 
     KmPackage kmPackage = new KmPackage();
-    for (String receiver : receivers) {
+    for (Receiver receiver : receivers) {
       KmType receiverType = new KmType();
-      receiverType.setClassifier(new KmClassifier.Class(receiver));
+      receiverType.setClassifier(new KmClassifier.Class(receiver.kotlinClassName()));
 
       KmFunction fun = new KmFunction(extensionName);
       Attributes.setVisibility(fun, Visibility.PUBLIC);
@@ -282,6 +293,11 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       KmType voidType = new KmType();
       voidType.setClassifier(new KmClassifier.Class("kotlin/Unit"));
       fun.setReturnType(voidType);
+      JvmExtensionsKt.setSignature(
+          fun,
+          new JvmMethodSignature(
+              extensionName,
+              String.format("(L%s;L%s)V", receiver.signatureClassName(), className(ACTION))));
       kmPackage.getFunctions().add(fun);
 
       KmProperty prop = new KmProperty(0, extensionName, 0, 0);
@@ -290,6 +306,11 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       Attributes.setNotDefault(prop.getGetter(), true);
       prop.setReceiverParameterType(receiverType);
       prop.setReturnType(elementType);
+      JvmExtensionsKt.setGetterSignature(
+          prop,
+          new JvmMethodSignature(
+              getterName,
+              String.format("(L%s;)L%s;", receiver.signatureClassName(), elementSignatureName)));
       kmPackage.getProperties().add(prop);
     }
     Metadata metadata =
@@ -312,7 +333,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
             .collect(Collectors.joining(", ")));
   }
 
-  private String className(TypeElement e) {
+  private static String className(TypeElement e) {
     if (requireNonNull(e.getEnclosingElement()).getKind() == ElementKind.PACKAGE) {
       return e.getQualifiedName().toString().replace('.', '/');
     }
@@ -414,5 +435,23 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
 
   private void fatalError(String msg) {
     processingEnv.getMessager().printMessage(Kind.ERROR, "FATAL ERROR: " + msg);
+  }
+
+  @AutoValue
+  abstract static class Receiver {
+    static Receiver create(String kotlinClassName, String signatureClassName) {
+      return new AutoValue_GenerateKotlinAccessorsProcessor_Receiver(
+          kotlinClassName, signatureClassName);
+    }
+
+    static Receiver create(TypeElement element, ProcessingEnvironment processingEnv) {
+      return create(
+          className(element),
+          className(processingEnv.getElementUtils().getBinaryName(element).toString()));
+    }
+
+    abstract String kotlinClassName();
+
+    abstract String signatureClassName();
   }
 }

@@ -1,6 +1,7 @@
 # Try to keep each section sorted alphabetically (with some exceptions to group entries together)
 [versions]
 autoService = "1.1.1"
+autoValue = "1.11.1"
 incapHelper = "1.0.0"
 junitJupiter = "6.0.3"
 kotlin = "2.3.20"
@@ -13,6 +14,8 @@ ktlint = "1.8.0"
 [libraries]
 autoService-annotations = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 autoService-processor = { module = "com.google.auto.service:auto-service", version.ref = "autoService" }
+autoValue-annotations = { module = "com.google.auto.value:auto-value-annotations", version.ref = "autoValue" }
+autoValue-processor = { module = "com.google.auto.value:auto-value", version.ref = "autoValue" }
 compileTesting = "com.google.testing.compile:compile-testing:0.23.0"
 incapHelper-annotations = { module = "net.ltgt.gradle.incap:incap", version.ref = "incapHelper" }
 incapHelper-processor = { module = "net.ltgt.gradle.incap:incap-processor", version.ref = "incapHelper" }
