@@ -213,13 +213,60 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     String getterName =
         "get" + Character.toUpperCase(extensionName.charAt(0)) + extensionName.substring(1);
 
+    TypeMirror extensionAwareType =
+        processingEnv.getElementUtils().getTypeElement(EXTENSION_AWARE).asType();
+    String extensionAware =
+        processingEnv.getTypeUtils().isSubtype(e.asType(), extensionAwareType)
+            ? "$this$" + extensionName
+            : "((" + EXTENSION_AWARE + ") $this$" + extensionName + ")";
+    try {
+      JavaFileObject javaFileObject =
+          processingEnv.getFiler().createSourceFile(packageName + "." + name, e);
+      try (PrintWriter out = new PrintWriter(javaFileObject.openWriter())) {
+        out.println("package " + packageName + ";");
+        out.println();
+        out.println(
+            generateKotlinMetadata(
+                extensionName,
+                className(e),
+                receivers.stream().map(this::className).collect(Collectors.toList())));
+        out.println("public class " + name + " {");
+        for (TypeElement receiver : receivers) {
+          out.printf(
+              Locale.ROOT,
+              "\n"
+                  + "  public static void %1$s(%2$s $this$%1$s, %3$s<? super %4$s> configure) {\n"
+                  + "    %5$s.getExtensions().configure(\"%1$s\", configure);\n"
+                  + "  }\n"
+                  + "\n"
+                  + "  public static %4$s %6$s(%2$s $this$%1$s) {\n"
+                  + "    return (%4$s) %5$s.getExtensions().getByName(\"%1$s\");\n"
+                  + "  }\n",
+              extensionName,
+              receiver.getQualifiedName(),
+              ACTION,
+              e.getQualifiedName(),
+              extensionAware,
+              getterName);
+        }
+        out.println("}");
+      }
+    } catch (IOException ioe) {
+      fatalError("Unable to create " + packageName + "." + name + ", " + ioe);
+    }
+    return name;
+  }
+
+  @VisibleForTesting
+  static String generateKotlinMetadata(
+      String extensionName, String element, List<String> receivers) {
     KmType elementType = new KmType();
-    elementType.setClassifier(new KmClassifier.Class(className(e)));
+    elementType.setClassifier(new KmClassifier.Class(element));
 
     KmPackage kmPackage = new KmPackage();
-    for (TypeElement receiver : receivers) {
+    for (String receiver : receivers) {
       KmType receiverType = new KmType();
-      receiverType.setClassifier(new KmClassifier.Class(className(receiver)));
+      receiverType.setClassifier(new KmClassifier.Class(receiver));
 
       KmFunction fun = new KmFunction(extensionName);
       Attributes.setVisibility(fun, Visibility.PUBLIC);
@@ -246,62 +293,22 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     }
     Metadata metadata =
         new KotlinClassMetadata.FileFacade(kmPackage, JVM_METADATA_VERSION, 0).write();
-
-    TypeMirror extensionAwareType =
-        processingEnv.getElementUtils().getTypeElement(EXTENSION_AWARE).asType();
-    String extensionAware =
-        processingEnv.getTypeUtils().isSubtype(e.asType(), extensionAwareType)
-            ? "$this$" + extensionName
-            : "((" + EXTENSION_AWARE + ") $this$" + extensionName + ")";
-    try {
-      JavaFileObject javaFileObject =
-          processingEnv.getFiler().createSourceFile(packageName + "." + name, e);
-      try (PrintWriter out = new PrintWriter(javaFileObject.openWriter())) {
-        out.println("package " + packageName + ";");
-        out.println();
-        out.printf(
-            Locale.ROOT,
-            "@kotlin.Metadata(\n"
-                + "    k = %d,\n"
-                + "    mv = { %s },\n"
-                + "    d1 = { %s },\n"
-                + "    d2 = { %s }\n"
-                + ")\n",
-            metadata.k(),
-            Arrays.stream(metadata.mv())
-                .mapToObj(Integer::toString)
-                .collect(Collectors.joining(", ")),
-            Arrays.stream(metadata.d1())
-                .map(GenerateKotlinAccessorsProcessor::escape)
-                .collect(Collectors.joining(", ")),
-            Arrays.stream(metadata.d2())
-                .map(GenerateKotlinAccessorsProcessor::escape)
-                .collect(Collectors.joining(", ")));
-        out.println("public class " + name + " {");
-        for (TypeElement receiver : receivers) {
-          out.printf(
-              Locale.ROOT,
-              "\n"
-                  + "  public static void %1$s(%2$s $this$%1$s, %3$s<? super %4$s> configure) {\n"
-                  + "    %5$s.getExtensions().configure(\"%1$s\", configure);\n"
-                  + "  }\n"
-                  + "\n"
-                  + "  public static %4$s %6$s(%2$s $this$%1$s) {\n"
-                  + "    return (%4$s) %5$s.getExtensions().getByName(\"%1$s\");\n"
-                  + "  }\n",
-              extensionName,
-              receiver.getQualifiedName(),
-              ACTION,
-              e.getQualifiedName(),
-              extensionAware,
-              getterName);
-        }
-        out.println("}");
-      }
-    } catch (IOException ioe) {
-      fatalError("Unable to create " + packageName + "." + name + ", " + ioe);
-    }
-    return name;
+    return String.format(
+        Locale.ROOT,
+        "@kotlin.Metadata(\n"
+            + "    k = %d,\n"
+            + "    mv = { %s },\n"
+            + "    d1 = { %s },\n"
+            + "    d2 = { %s }\n"
+            + ")\n",
+        metadata.k(),
+        Arrays.stream(metadata.mv()).mapToObj(Integer::toString).collect(Collectors.joining(", ")),
+        Arrays.stream(metadata.d1())
+            .map(GenerateKotlinAccessorsProcessor::escape)
+            .collect(Collectors.joining(", ")),
+        Arrays.stream(metadata.d2())
+            .map(GenerateKotlinAccessorsProcessor::escape)
+            .collect(Collectors.joining(", ")));
   }
 
   private String className(TypeElement e) {

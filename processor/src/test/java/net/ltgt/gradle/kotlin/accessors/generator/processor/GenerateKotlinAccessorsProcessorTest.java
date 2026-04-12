@@ -21,6 +21,7 @@ import static com.google.testing.compile.JavaSourcesSubject.assertThat;
 
 import com.google.testing.compile.Compiler;
 import com.google.testing.compile.JavaFileObjects;
+import java.util.List;
 import javax.tools.StandardLocation;
 import org.junit.jupiter.api.Test;
 
@@ -69,12 +70,7 @@ public interface Bar {}
                     """
 package pkg;
 
-@kotlin.Metadata(
-    k = 2,
-    mv = { 1, 4, 0 },
-    d1 = { "\\u0000\\u0014\\n\\u0002\\u0018\\u0002\\n\\u0002\\u0018\\u0002\\n\\u0002\\u0018\\u0002\\n\\u0000\\n\\u0002\\u0010\\u0002\\n\\u0000\\u001a\\u001a\\u0010\\u0005\\u001a\\u00020\\u0004*\\u00020\\u00002\\u000e\\u0010\\u0003\\u001a\\n\\u0012\\u0006\\u0008\\u0000\\u0012\\u00020\\u00020\\u0001\\"\\u000c\\u0010\\u0005\\u001a\\u00020\\u0002*\\u00020\\u00008F" },
-    d2 = { "Lpkg/Foo;", "Lorg/gradle/api/Action;", "Lpkg/Bar;", "configure", "", "bar" }
-)
+%4$s // We don't really care about the metadata here, it'll be tested in the example project
 public class %1$sBar {
   public static void bar(pkg.Foo $this$bar, %2$s<? super pkg.Bar> configure) {
     ((%3$s) $this$bar).getExtensions().configure("bar", configure);
@@ -88,8 +84,9 @@ public class %1$sBar {
                     .formatted(
                         GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX,
                         GenerateKotlinAccessorsProcessor.ACTION,
-                        GenerateKotlinAccessorsProcessor.EXTENSION_AWARE)));
-    // XXX: check content (?)
+                        GenerateKotlinAccessorsProcessor.EXTENSION_AWARE,
+                        GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
+                            /* language= */ "bar", "pkg/Bar", List.of("pkg/Foo")))));
     assertThat(compilation)
         .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
   }
