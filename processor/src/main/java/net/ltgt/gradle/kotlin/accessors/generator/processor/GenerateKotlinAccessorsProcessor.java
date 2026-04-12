@@ -41,6 +41,7 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
@@ -272,8 +273,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       Attributes.setVisibility(fun, Visibility.PUBLIC);
       fun.setReceiverParameterType(receiverType);
       KmType actionType = new KmType();
-      // XXX: use getTypeElement / getBinaryName ?
-      actionType.setClassifier(new KmClassifier.Class(ACTION.replace('.', '/')));
+      actionType.setClassifier(new KmClassifier.Class(className(ACTION)));
       actionType.getArguments().add(new KmTypeProjection(KmVariance.IN, elementType));
       KmValueParameter param = new KmValueParameter("configure");
       param.setType(actionType);
@@ -312,12 +312,14 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   private String className(TypeElement e) {
-    return processingEnv
-        .getElementUtils()
-        .getBinaryName(e)
-        .toString()
-        .replace('.', '/')
-        .replace('$', '.');
+    if (requireNonNull(e.getEnclosingElement()).getKind() == ElementKind.PACKAGE) {
+      return e.getQualifiedName().toString().replace('.', '/');
+    }
+    return className((TypeElement) e.getEnclosingElement()) + "." + e.getSimpleName();
+  }
+
+  private static String className(String topLevelName) {
+    return topLevelName.replace('.', '/');
   }
 
   @SuppressWarnings("unchecked")
@@ -372,18 +374,16 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       try (OutputStream out = fileObject.openOutputStream()) {
         KmModule kotlinModule = new KmModule();
         packages.forEach(
-            (packageName, classNames) -> {
-              kotlinModule
-                  .getPackageParts()
-                  .put(
-                      packageName,
-                      new KmPackageParts(
-                          classNames.stream()
-                              // XXX: use getTypeElement / getBinaryName ?
-                              .map((packageName.replace('.', '/') + "/")::concat)
-                              .collect(Collectors.toList()),
-                          Collections.emptyMap()));
-            });
+            (packageName, classNames) ->
+                kotlinModule
+                    .getPackageParts()
+                    .put(
+                        packageName,
+                        new KmPackageParts(
+                            classNames.stream()
+                                .map(className -> className(packageName + "." + className))
+                                .collect(Collectors.toList()),
+                            Collections.emptyMap())));
         out.write(new KotlinModuleMetadata(kotlinModule, JVM_METADATA_VERSION).write());
       }
     } catch (IOException e) {

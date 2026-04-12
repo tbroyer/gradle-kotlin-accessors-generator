@@ -75,5 +75,11 @@ public class TestPlugin implements Plugin<Project> {
                                 DefaultDistributionExtension.class);
                       });
             });
+
+    TestExtension ext = project.getExtensions().create("ltgt", TestExtension.class);
+    ext.getExtensions().create(SimpleExtension.NAME, SimpleExtension.class);
   }
+
+  // Let's put a dollar in there
+  public interface TestExtension extends ExtensionAware {}
 }

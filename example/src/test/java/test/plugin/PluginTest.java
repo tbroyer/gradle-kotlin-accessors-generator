@@ -108,6 +108,8 @@ distributions {
         }
     }
 }
+
+ltgt.simple.configureSimple()
 """);
 
     GradleRunner.create()

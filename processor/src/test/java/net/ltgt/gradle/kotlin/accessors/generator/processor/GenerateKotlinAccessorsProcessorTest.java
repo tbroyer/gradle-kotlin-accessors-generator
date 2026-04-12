@@ -92,6 +92,65 @@ public class %1$sBar {
   }
 
   @Test
+  void nestedReceiver() {
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {
+  public static class Nested {}
+}
+"""),
+                JavaFileObjects.forSourceString(
+                    "pkg.Bar",
+                    /* language=java */
+                    """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.Nested.class)
+public interface Bar {}
+"""));
+    assertThat(compilation).succeededWithoutWarnings();
+    assertThat(compilation)
+        .generatedSourceFile(
+            "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX))
+        .hasSourceEquivalentTo(
+            JavaFileObjects.forSourceString(
+                "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX),
+                    /* language=java */
+                    """
+package pkg;
+
+%4$s // We don't really care about the metadata here, it'll be tested in the example project
+public class %1$sBar {
+  public static void bar(pkg.Foo.Nested $this$bar, %2$s<? super pkg.Bar> configure) {
+    ((%3$s) $this$bar).getExtensions().configure("bar", configure);
+  }
+
+  public static pkg.Bar getBar(pkg.Foo.Nested $this$bar) {
+    return (pkg.Bar) ((%3$s) $this$bar).getExtensions().getByName("bar");
+  }
+}
+"""
+                    .formatted(
+                        GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX,
+                        GenerateKotlinAccessorsProcessor.ACTION,
+                        GenerateKotlinAccessorsProcessor.EXTENSION_AWARE,
+                        GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
+                            /* language= */ "bar", "pkg/Bar", List.of("pkg/Foo.Nested")))));
+    // XXX: check content (?)
+    assertThat(compilation)
+        .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
+  }
+
+  @Test
   void missingKotlinModuleName() {
     var compilation =
         getCompiler()
