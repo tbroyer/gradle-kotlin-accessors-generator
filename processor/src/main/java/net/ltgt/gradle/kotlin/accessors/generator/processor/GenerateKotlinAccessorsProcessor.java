@@ -67,6 +67,7 @@ import net.ltgt.gradle.incap.IncrementalAnnotationProcessor;
 import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType;
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 @AutoService(Processor.class)
 @IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.AGGREGATING)
@@ -77,19 +78,19 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       GenerateKotlinAccessors.class.getSimpleName();
   private static final JvmMetadataVersion JVM_METADATA_VERSION = new JvmMetadataVersion(1, 4);
 
-  /* @VisibleForTesting */
+  @VisibleForTesting
   static final String KOTLIN_MODULE_NAME =
       "net.ltgt.gradle.kotlin.accessors.generator.kotlinModuleName";
-  /* @VisibleForTesting */
-  static final String GENERATED_CLASS_PREFIX = "$GradleKotlinAccessors$";
-  /* @VisibleForTesting */
-  static final String EXTENSION_AWARE = "org.gradle.api.plugins.ExtensionAware";
-  /* @VisibleForTesting */
-  static final String ACTION = "org.gradle.api.Action";
-  /* @VisibleForTesting */
+
+  @VisibleForTesting static final String GENERATED_CLASS_PREFIX = "$GradleKotlinAccessors$";
+  @VisibleForTesting static final String EXTENSION_AWARE = "org.gradle.api.plugins.ExtensionAware";
+  @VisibleForTesting static final String ACTION = "org.gradle.api.Action";
+
+  @VisibleForTesting
   static final String ERROR_MISSING_KOTLIN_MODULE_NAME =
       KOTLIN_MODULE_NAME + " option must be supplied";
-  /* @VisibleForTesting */
+
+  @VisibleForTesting
   static final String ERROR_BAD_EXTENSION_NAME =
       ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier";
 
