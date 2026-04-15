@@ -231,6 +231,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
                 extensionName,
                 className(e),
                 receivers.stream().map(this::className).collect(Collectors.toList())));
+        out.println("@org.gradle.api.Generated");
         out.println("public class " + name + " {");
         for (TypeElement receiver : receivers) {
           out.printf(

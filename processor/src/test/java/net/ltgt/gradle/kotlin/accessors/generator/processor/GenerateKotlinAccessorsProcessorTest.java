@@ -71,6 +71,7 @@ public interface Bar {}
 package pkg;
 
 %4$s // We don't really care about the metadata here, it'll be tested in the example project
+@org.gradle.api.Generated
 public class %1$sBar {
   public static void bar(pkg.Foo $this$bar, %2$s<? super pkg.Bar> configure) {
     ((%3$s) $this$bar).getExtensions().configure("bar", configure);
@@ -129,6 +130,7 @@ public interface Bar {}
 package pkg;
 
 %4$s // We don't really care about the metadata here, it'll be tested in the example project
+@org.gradle.api.Generated
 public class %1$sBar {
   public static void bar(pkg.Foo.Nested $this$bar, %2$s<? super pkg.Bar> configure) {
     ((%3$s) $this$bar).getExtensions().configure("bar", configure);
