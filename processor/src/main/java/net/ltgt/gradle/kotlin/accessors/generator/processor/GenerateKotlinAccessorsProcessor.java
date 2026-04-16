@@ -98,6 +98,10 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   static final String ERROR_BAD_EXTENSION_NAME =
       ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier";
 
+  @VisibleForTesting
+  static final String ERROR_PRIVATE_EXTENSION_NAME =
+      ANNOTATION_SIMPLE_NAME + ".name must not start with an underscore";
+
   private @Nullable String kotlinModuleName;
   private final Map<String, List<String>> packages = new LinkedHashMap<>();
 
@@ -204,6 +208,12 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       processingEnv
           .getMessager()
           .printMessage(Kind.ERROR, ERROR_BAD_EXTENSION_NAME, e, annotation, annotationValue);
+      return null;
+    }
+    if (extensionName.startsWith("_")) {
+      processingEnv
+          .getMessager()
+          .printMessage(Kind.ERROR, ERROR_PRIVATE_EXTENSION_NAME, e, annotation, annotationValue);
       return null;
     }
     return extensionName;

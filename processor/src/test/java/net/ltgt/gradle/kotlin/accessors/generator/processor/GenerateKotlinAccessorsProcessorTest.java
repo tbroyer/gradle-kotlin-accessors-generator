@@ -215,6 +215,40 @@ public class Foo {}
   }
 
   @Test
+  void badExtensionName_private() {
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "_privateName", receivers = Foo.class)
+public interface Bar {}
+""");
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {}
+"""),
+                sourceFile);
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_PRIVATE_EXTENSION_NAME)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(33);
+  }
+
+  @Test
   void inexistantReceiver() {
     var sourceFile =
         JavaFileObjects.forSourceString(
