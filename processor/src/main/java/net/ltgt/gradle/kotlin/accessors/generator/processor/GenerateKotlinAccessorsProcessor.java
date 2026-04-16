@@ -229,10 +229,6 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
 
     TypeMirror extensionAwareType =
         processingEnv.getElementUtils().getTypeElement(EXTENSION_AWARE).asType();
-    String extensionAware =
-        processingEnv.getTypeUtils().isSubtype(e.asType(), extensionAwareType)
-            ? "$this$" + extensionName
-            : "((" + EXTENSION_AWARE + ") $this$" + extensionName + ")";
     try {
       JavaFileObject javaFileObject =
           processingEnv.getFiler().createSourceFile(packageName + "." + name, e);
@@ -251,6 +247,10 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         out.println("@org.gradle.api.Generated");
         out.println("public class " + name + " {");
         for (TypeElement receiver : receivers) {
+          String extensionAware =
+              processingEnv.getTypeUtils().isSubtype(receiver.asType(), extensionAwareType)
+                  ? "$this$" + extensionName
+                  : "((" + EXTENSION_AWARE + ") $this$" + extensionName + ")";
           out.printf(
               Locale.ROOT,
               "\n"

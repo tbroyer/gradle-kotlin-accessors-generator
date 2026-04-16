@@ -98,6 +98,130 @@ public class %1$sBar {
   }
 
   @Test
+  void extensionAware_receiver() {
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+import org.gradle.api.plugins.ExtensionAware;
+
+public abstract class Foo implements ExtensionAware {}
+"""),
+                JavaFileObjects.forSourceString(
+                    "pkg.Bar",
+                    /* language=java */
+                    """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.class)
+public interface Bar {}
+"""));
+    assertThat(compilation).succeededWithoutWarnings();
+    assertThat(compilation)
+        .generatedSourceFile(
+            "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX))
+        .hasSourceEquivalentTo(
+            JavaFileObjects.forSourceString(
+                "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX),
+                    /* language=java */
+                    """
+package pkg;
+
+%3$s // We don't really care about the metadata here, it'll be tested in the example project
+@org.gradle.api.Generated
+public class %1$sBar {
+  public static void bar(pkg.Foo $this$bar, %2$s<? super pkg.Bar> configure) {
+    $this$bar.getExtensions().configure("bar", configure);
+  }
+
+  public static pkg.Bar getBar(pkg.Foo $this$bar) {
+    return (pkg.Bar) $this$bar.getExtensions().getByName("bar");
+  }
+}
+"""
+                    .formatted(
+                        GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX,
+                        GenerateKotlinAccessorsProcessor.ACTION,
+                        GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
+                            /* language= */ "bar",
+                            "pkg/Bar",
+                            "pkg/Bar",
+                            List.of(Receiver.create("pkg/Foo", "pkg/Foo")),
+                            "getBar"))));
+    assertThat(compilation)
+        .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
+  }
+
+  @Test
+  void extensionAware_extension() {
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {}
+"""),
+                JavaFileObjects.forSourceString(
+                    "pkg.Bar",
+                    /* language=java */
+                    """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+import org.gradle.api.plugins.ExtensionAware;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.class)
+public interface Bar extends ExtensionAware {}
+"""));
+    assertThat(compilation).succeededWithoutWarnings();
+    assertThat(compilation)
+        .generatedSourceFile(
+            "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX))
+        .hasSourceEquivalentTo(
+            JavaFileObjects.forSourceString(
+                "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX),
+                    /* language=java */
+                    """
+package pkg;
+
+%4$s // We don't really care about the metadata here, it'll be tested in the example project
+@org.gradle.api.Generated
+public class %1$sBar {
+  public static void bar(pkg.Foo $this$bar, %2$s<? super pkg.Bar> configure) {
+    ((%3$s) $this$bar).getExtensions().configure("bar", configure);
+  }
+
+  public static pkg.Bar getBar(pkg.Foo $this$bar) {
+    return (pkg.Bar) ((%3$s) $this$bar).getExtensions().getByName("bar");
+  }
+}
+"""
+                    .formatted(
+                        GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX,
+                        GenerateKotlinAccessorsProcessor.ACTION,
+                        GenerateKotlinAccessorsProcessor.EXTENSION_AWARE,
+                        GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
+                            /* language= */ "bar",
+                            "pkg/Bar",
+                            "pkg/Bar",
+                            List.of(Receiver.create("pkg/Foo", "pkg/Foo")),
+                            "getBar"))));
+    assertThat(compilation)
+        .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
+  }
+
+  @Test
   void nestedReceiver() {
     var compilation =
         getCompiler()
