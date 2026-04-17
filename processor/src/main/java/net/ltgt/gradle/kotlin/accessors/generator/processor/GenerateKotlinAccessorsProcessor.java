@@ -160,22 +160,14 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       if (extensionName == null) {
         continue;
       }
-      List<? extends TypeMirror> receivers = getReceivers(annotation);
+      Set<TypeElement> receivers = getReceivers(annotation);
       if (receivers == null) {
         continue;
       }
       String packageName =
           processingEnv.getElementUtils().getPackageOf(e).getQualifiedName().toString();
       String className = GENERATED_CLASS_PREFIX + e.getSimpleName();
-      generateKotlinExtensions(
-          packageName,
-          className,
-          (TypeElement) e,
-          extensionName,
-          receivers.stream()
-              .map(processingEnv.getTypeUtils()::asElement)
-              .map(TypeElement.class::cast)
-              .collect(Collectors.toList()));
+      generateKotlinExtensions(packageName, className, (TypeElement) e, extensionName, receivers);
       packages.computeIfAbsent(packageName, ignored -> new ArrayList<>()).add(className);
     }
   }
@@ -224,7 +216,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       String className,
       TypeElement e,
       String extensionName,
-      List<? extends TypeElement> receivers) {
+      Set<? extends TypeElement> receivers) {
     String getterName =
         "get" + Character.toUpperCase(extensionName.charAt(0)) + extensionName.substring(1);
 
@@ -355,7 +347,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   @SuppressWarnings("unchecked")
-  private static @Nullable List<? extends TypeMirror> getReceivers(AnnotationMirror annotation) {
+  private @Nullable Set<TypeElement> getReceivers(AnnotationMirror annotation) {
     AnnotationValue receivers = getAnnotationValue(annotation, "receivers");
     if (receivers == null || !(receivers.getValue() instanceof List)) {
       // Let JavaC emit the error for the missing attribute or bad type
@@ -367,7 +359,9 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
           .stream()
               .map(AnnotationValue::getValue)
               .map(TypeMirror.class::cast)
-              .collect(Collectors.toList());
+              .map(processingEnv.getTypeUtils()::asElement)
+              .map(TypeElement.class::cast)
+              .collect(Collectors.toSet());
     } catch (ClassCastException ignored) {
       // Let JavaC emit the error for the bad type
       return null;
