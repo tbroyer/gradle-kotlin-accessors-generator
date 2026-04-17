@@ -5,7 +5,7 @@ autoValue = "1.11.1"
 incapHelper = "1.0.0"
 junitJupiter = "6.0.3"
 kotlin = "2.3.20"
-nullaway = "0.13.2"
+nullaway = "0.13.3"
 
 # Versions used by build-logic
 googleJavaFormat = "1.35.0"
