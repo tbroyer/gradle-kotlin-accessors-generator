@@ -99,6 +99,18 @@ public class %1$sBar {
 
   @Test
   void duplicatedReceiver() {
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = { Foo.class, Foo.class })
+public interface Bar {}
+""");
     var compilation =
         getCompiler()
             .compile(
@@ -110,18 +122,14 @@ package pkg;
 
 public class Foo {}
 """),
-                JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
-package pkg;
-
-import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-
-@GenerateKotlinAccessors(name = "bar", receivers = { Foo.class, Foo.class })
-public interface Bar {}
-"""));
-    assertThat(compilation).succeededWithoutWarnings();
+                sourceFile);
+    assertThat(compilation).succeeded();
+    assertThat(compilation).hadWarningCount(1);
+    assertThat(compilation)
+        .hadWarningContaining(GenerateKotlinAccessorsProcessor.WARNING_DUPLICATE_VALUE)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(68);
     assertThat(compilation)
         .generatedSourceFile(
             "pkg.%sBar".formatted(GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX))

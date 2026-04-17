@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -102,6 +103,8 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   static final String ERROR_PRIVATE_EXTENSION_NAME =
       ANNOTATION_SIMPLE_NAME + ".name must not start with an underscore";
 
+  @VisibleForTesting static final String WARNING_DUPLICATE_VALUE = "Duplicate value";
+
   private @Nullable String kotlinModuleName;
   private final Map<String, List<String>> packages = new LinkedHashMap<>();
 
@@ -160,7 +163,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       if (extensionName == null) {
         continue;
       }
-      Set<TypeElement> receivers = getReceivers(annotation);
+      Set<TypeElement> receivers = getReceivers(e, annotation);
       if (receivers == null) {
         continue;
       }
@@ -347,25 +350,30 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   @SuppressWarnings("unchecked")
-  private @Nullable Set<TypeElement> getReceivers(AnnotationMirror annotation) {
+  private @Nullable Set<TypeElement> getReceivers(Element e, AnnotationMirror annotation) {
     AnnotationValue receivers = getAnnotationValue(annotation, "receivers");
     if (receivers == null || !(receivers.getValue() instanceof List)) {
       // Let JavaC emit the error for the missing attribute or bad type
       return null;
     }
+    Set<TypeElement> elements = new LinkedHashSet<>();
     try {
       // TODO: check receivers; possibly defer generation if there's an ErrorType
-      return ((List<? extends AnnotationValue>) receivers.getValue())
-          .stream()
-              .map(AnnotationValue::getValue)
-              .map(TypeMirror.class::cast)
-              .map(processingEnv.getTypeUtils()::asElement)
-              .map(TypeElement.class::cast)
-              .collect(Collectors.toSet());
+      for (AnnotationValue annotationValue :
+          ((List<? extends AnnotationValue>) receivers.getValue())) {
+        if (!elements.add(
+            (TypeElement)
+                processingEnv.getTypeUtils().asElement((TypeMirror) annotationValue.getValue()))) {
+          processingEnv
+              .getMessager()
+              .printMessage(Kind.WARNING, WARNING_DUPLICATE_VALUE, e, annotation, annotationValue);
+        }
+      }
     } catch (ClassCastException ignored) {
       // Let JavaC emit the error for the bad type
       return null;
     }
+    return elements;
   }
 
   static String escape(String value) {
