@@ -164,19 +164,19 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       if (receivers == null) {
         continue;
       }
-      String className =
-          generateKotlinExtensions(
-              (TypeElement) e,
-              extensionName,
-              receivers.stream()
-                  .map(processingEnv.getTypeUtils()::asElement)
-                  .map(TypeElement.class::cast)
-                  .collect(Collectors.toList()));
-      packages
-          .computeIfAbsent(
-              processingEnv.getElementUtils().getPackageOf(e).getQualifiedName().toString(),
-              ignored -> new ArrayList<>())
-          .add(className);
+      String packageName =
+          processingEnv.getElementUtils().getPackageOf(e).getQualifiedName().toString();
+      String className = GENERATED_CLASS_PREFIX + e.getSimpleName();
+      generateKotlinExtensions(
+          packageName,
+          className,
+          (TypeElement) e,
+          extensionName,
+          receivers.stream()
+              .map(processingEnv.getTypeUtils()::asElement)
+              .map(TypeElement.class::cast)
+              .collect(Collectors.toList()));
+      packages.computeIfAbsent(packageName, ignored -> new ArrayList<>()).add(className);
     }
   }
 
@@ -219,11 +219,12 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     return extensionName;
   }
 
-  private String generateKotlinExtensions(
-      TypeElement e, String extensionName, List<? extends TypeElement> receivers) {
-    String packageName =
-        processingEnv.getElementUtils().getPackageOf(e).getQualifiedName().toString();
-    String name = GENERATED_CLASS_PREFIX + e.getSimpleName();
+  private void generateKotlinExtensions(
+      String packageName,
+      String className,
+      TypeElement e,
+      String extensionName,
+      List<? extends TypeElement> receivers) {
     String getterName =
         "get" + Character.toUpperCase(extensionName.charAt(0)) + extensionName.substring(1);
 
@@ -231,7 +232,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         processingEnv.getElementUtils().getTypeElement(EXTENSION_AWARE).asType();
     try {
       JavaFileObject javaFileObject =
-          processingEnv.getFiler().createSourceFile(packageName + "." + name, e);
+          processingEnv.getFiler().createSourceFile(packageName + "." + className, e);
       try (PrintWriter out = new PrintWriter(javaFileObject.openWriter())) {
         out.println("package " + packageName + ";");
         out.println();
@@ -245,7 +246,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
                     .collect(Collectors.toList()),
                 getterName));
         out.println("@org.gradle.api.Generated");
-        out.println("public class " + name + " {");
+        out.println("public class " + className + " {");
         for (TypeElement receiver : receivers) {
           String extensionAware =
               processingEnv.getTypeUtils().isSubtype(receiver.asType(), extensionAwareType)
@@ -271,9 +272,8 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         out.println("}");
       }
     } catch (IOException ioe) {
-      fatalError("Unable to create " + packageName + "." + name + ", " + ioe);
+      fatalError("Unable to create " + packageName + "." + className + ", " + ioe);
     }
-    return name;
   }
 
   @VisibleForTesting
