@@ -1,21 +1,22 @@
 plugins {
     `java-library`
     id("local.java-conventions")
+    id("local.maven-publish")
 }
 
 dependencies {
-    compileOnlyApi(libs.jetbrains.annotations)
+    compileOnly(libs.jetbrains.annotations)
 
     implementation(projects.annotations)
     implementation(libs.kotlin.metadata.jvm)
 
-    compileOnlyApi(libs.incapHelper.annotations)
+    compileOnly(libs.incapHelper.annotations)
     annotationProcessor(libs.incapHelper.processor)
 
-    compileOnlyApi(libs.autoService.annotations)
+    compileOnly(libs.autoService.annotations)
     annotationProcessor(libs.autoService.processor)
 
-    compileOnlyApi(libs.autoValue.annotations)
+    compileOnly(libs.autoValue.annotations)
     annotationProcessor(libs.autoValue.processor)
 }
 
@@ -29,6 +30,12 @@ testing {
                 implementation(libs.compileTesting)
                 implementation(libs.truth)
                 runtimeOnly(gradleApi())
+
+                // We could use compileOnlyApi above, but we don't want the dependency in the POM.
+                // This is OK because annotation processors aren't regular Java libraries you compile against.
+                compileOnly(libs.incapHelper.annotations)
+                compileOnly(libs.autoService.annotations)
+                compileOnly(libs.autoValue.annotations)
             }
             targets.configureEach {
                 testTask {
