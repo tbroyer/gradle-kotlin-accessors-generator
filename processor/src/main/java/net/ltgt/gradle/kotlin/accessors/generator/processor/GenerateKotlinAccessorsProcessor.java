@@ -45,6 +45,7 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
@@ -103,10 +104,16 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   static final String ERROR_PRIVATE_EXTENSION_NAME =
       ANNOTATION_SIMPLE_NAME + ".name must not start with an underscore";
 
+  @VisibleForTesting
+  static final String ERROR_MISSING_RECEIVER_TYPE =
+      GenerateKotlinAccessorsProcessor.class.getCanonicalName()
+          + " was unable to process this type because not all of the receiver types could be resolved.";
+
   @VisibleForTesting static final String WARNING_DUPLICATE_VALUE = "Duplicate value";
 
   private @Nullable String kotlinModuleName;
   private final Map<String, List<String>> packages = new LinkedHashMap<>();
+  private final Set<Element> deferredElements = new LinkedHashSet<>();
 
   @Override
   public Set<String> getSupportedAnnotationTypes() {
@@ -130,6 +137,8 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     if (kotlinModuleName == null) {
       fatalError(ERROR_MISSING_KOTLIN_MODULE_NAME);
     }
+    packages.clear();
+    deferredElements.clear();
   }
 
   @Override
@@ -146,15 +155,32 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   private void processImpl(RoundEnvironment roundEnv) {
+    processAnnotations(roundEnv);
     if (roundEnv.processingOver()) {
-      generateKotlinModuleFiles();
-    } else {
-      processAnnotations(roundEnv);
+      if (!deferredElements.isEmpty()) {
+        for (Element e : deferredElements) {
+          AnnotationMirror annotation = getAnnotationMirror(e);
+          processingEnv
+              .getMessager()
+              .printMessage(
+                  Kind.ERROR,
+                  ERROR_MISSING_RECEIVER_TYPE,
+                  e,
+                  annotation,
+                  getAnnotationValue(annotation, "receivers"));
+        }
+      } else {
+        generateKotlinModuleFiles();
+      }
     }
   }
 
   private void processAnnotations(RoundEnvironment roundEnv) {
-    for (Element e : roundEnv.getElementsAnnotatedWith(GenerateKotlinAccessors.class)) {
+    Set<Element> elements = new LinkedHashSet<>();
+    elements.addAll(roundEnv.getElementsAnnotatedWith(GenerateKotlinAccessors.class));
+    elements.addAll(deferredElements);
+    deferredElements.clear();
+    for (Element e : elements) {
       if (!checkAnnotatedElement(e)) {
         continue;
       }
@@ -357,21 +383,20 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       return null;
     }
     Set<TypeElement> elements = new LinkedHashSet<>();
-    try {
-      // TODO: check receivers; possibly defer generation if there's an ErrorType
-      for (AnnotationValue annotationValue :
-          ((List<? extends AnnotationValue>) receivers.getValue())) {
-        if (!elements.add(
-            (TypeElement)
-                processingEnv.getTypeUtils().asElement((TypeMirror) annotationValue.getValue()))) {
-          processingEnv
-              .getMessager()
-              .printMessage(Kind.WARNING, WARNING_DUPLICATE_VALUE, e, annotation, annotationValue);
-        }
+    for (AnnotationValue annotationValue :
+        ((List<? extends AnnotationValue>) receivers.getValue())) {
+      Object value = annotationValue.getValue();
+      if (!(value instanceof TypeMirror) || ((TypeMirror) value).getKind() != TypeKind.DECLARED) {
+        // Either this is a malformed annotation or it references an inexistant class,
+        // so defer processing, and JavaC might emit the error
+        deferredElements.add(e);
+        return null;
       }
-    } catch (ClassCastException ignored) {
-      // Let JavaC emit the error for the bad type
-      return null;
+      if (!elements.add((TypeElement) processingEnv.getTypeUtils().asElement((TypeMirror) value))) {
+        processingEnv
+            .getMessager()
+            .printMessage(Kind.WARNING, WARNING_DUPLICATE_VALUE, e, annotation, annotationValue);
+      }
     }
     return elements;
   }

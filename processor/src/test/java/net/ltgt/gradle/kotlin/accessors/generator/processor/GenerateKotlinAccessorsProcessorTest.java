@@ -21,9 +21,20 @@ import static com.google.testing.compile.JavaSourcesSubject.assertThat;
 
 import com.google.testing.compile.Compiler;
 import com.google.testing.compile.JavaFileObjects;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.TypeElement;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
 import net.ltgt.gradle.kotlin.accessors.generator.processor.GenerateKotlinAccessorsProcessor.Receiver;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class GenerateKotlinAccessorsProcessorTest {
@@ -458,9 +469,129 @@ public interface Bar {}
     var compilation = getCompiler().compile(sourceFile);
     assertThat(compilation).failed();
     assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_MISSING_RECEIVER_TYPE)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(55);
+    assertThat(compilation)
         .hadErrorContaining(": class Foo")
         .inFile(sourceFile)
         .onLine(5)
         .atColumn(52);
+  }
+
+  @Test
+  void generatedReceiver() {
+    class TestProcessor extends AbstractProcessor {
+      private @Nullable JavaFileObject generated;
+
+      @Override
+      public Set<String> getSupportedAnnotationTypes() {
+        return Collections.singleton(GenerateKotlinAccessors.class.getCanonicalName());
+      }
+
+      @Override
+      public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
+      }
+
+      @Override
+      public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        if (generated == null) {
+          try {
+            generated = processingEnv.getFiler().createSourceFile("pkg.Foo");
+            try (var out = generated.openWriter()) {
+              out.write(
+                  /* language=java */
+                  """
+package pkg;
+
+public class Foo {}
+""");
+            }
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+        return false;
+      }
+    }
+
+    var compilation =
+        getCompiler()
+            .withProcessors(new GenerateKotlinAccessorsProcessor(), new TestProcessor())
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Bar",
+                    /* language=java */
+                    """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.class)
+public class Bar {}
+"""));
+    assertThat(compilation).succeededWithoutWarnings();
+    assertThat(compilation).generatedSourceFile("pkg.Foo");
+    assertThat(compilation)
+        .generatedSourceFile(
+            "pkg." + GenerateKotlinAccessorsProcessor.GENERATED_CLASS_PREFIX + "Bar");
+  }
+
+  @Test
+  void generatedReceiver_whenProcessingOver() {
+    class TestProcessor extends AbstractProcessor {
+      @Override
+      public Set<String> getSupportedAnnotationTypes() {
+        return Collections.singleton(GenerateKotlinAccessors.class.getCanonicalName());
+      }
+
+      @Override
+      public SourceVersion getSupportedSourceVersion() {
+        return SourceVersion.latestSupported();
+      }
+
+      @Override
+      public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        if (roundEnv.processingOver()) {
+          try (var out = processingEnv.getFiler().createSourceFile("pkg.Foo").openWriter()) {
+            out.write(
+                /* language=java */
+                """
+package pkg;
+
+public class Foo {}
+""");
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        }
+        return false;
+      }
+    }
+
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.class)
+public class Bar {}
+""");
+    var compilation =
+        getCompiler()
+            .withProcessors(new TestProcessor(), new GenerateKotlinAccessorsProcessor())
+            .compile(sourceFile);
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_MISSING_RECEIVER_TYPE)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(55);
   }
 }
