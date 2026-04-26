@@ -617,4 +617,38 @@ public class Bar {}
         .onLine(5)
         .atColumn(52);
   }
+
+  @Test
+  void arrayReceiver() {
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo[].class)
+public class Bar {}
+""");
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {}
+"""),
+                sourceFile);
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_ARRAY_RECEIVER)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(57);
+  }
 }

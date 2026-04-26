@@ -45,7 +45,6 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
@@ -111,6 +110,8 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
 
   @VisibleForTesting
   static final String ERROR_NO_RECEIVERS = ANNOTATION_NAME + ".receivers cannot be empty";
+
+  @VisibleForTesting static final String ERROR_ARRAY_RECEIVER = "Receivers cannot be array types";
 
   @VisibleForTesting static final String WARNING_DUPLICATE_VALUE = "Duplicate value";
 
@@ -395,13 +396,29 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     }
     for (AnnotationValue annotationValue : values) {
       Object value = annotationValue.getValue();
-      if (!(value instanceof TypeMirror) || ((TypeMirror) value).getKind() != TypeKind.DECLARED) {
+      if (!(value instanceof TypeMirror)) {
         // Either this is a malformed annotation or it references an inexistant class,
         // so defer processing, and JavaC might emit the error
         deferredElements.add(e);
         return null;
       }
-      if (!elements.add((TypeElement) processingEnv.getTypeUtils().asElement((TypeMirror) value))) {
+      TypeMirror typeMirror = (TypeMirror) value;
+      switch (typeMirror.getKind()) {
+        case DECLARED:
+          break;
+        case ERROR:
+          deferredElements.add(e);
+          return null;
+        case ARRAY:
+          processingEnv
+              .getMessager()
+              .printMessage(Kind.ERROR, ERROR_ARRAY_RECEIVER, e, annotation, annotationValue);
+          return null;
+        default:
+          // Let JavaC emit the error for the bad type
+          return null;
+      }
+      if (!elements.add((TypeElement) processingEnv.getTypeUtils().asElement(typeMirror))) {
         processingEnv
             .getMessager()
             .printMessage(Kind.WARNING, WARNING_DUPLICATE_VALUE, e, annotation, annotationValue);
