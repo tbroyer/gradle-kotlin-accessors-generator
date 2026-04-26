@@ -109,6 +109,9 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       GenerateKotlinAccessorsProcessor.class.getCanonicalName()
           + " was unable to process this type because not all of the receiver types could be resolved.";
 
+  @VisibleForTesting
+  static final String ERROR_NO_RECEIVERS = ANNOTATION_NAME + ".receivers cannot be empty";
+
   @VisibleForTesting static final String WARNING_DUPLICATE_VALUE = "Duplicate value";
 
   private @Nullable String kotlinModuleName;
@@ -383,8 +386,14 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       return null;
     }
     Set<TypeElement> elements = new LinkedHashSet<>();
-    for (AnnotationValue annotationValue :
-        ((List<? extends AnnotationValue>) receivers.getValue())) {
+    List<? extends AnnotationValue> values = (List<? extends AnnotationValue>) receivers.getValue();
+    if (values.isEmpty()) {
+      processingEnv
+          .getMessager()
+          .printMessage(Kind.ERROR, ERROR_NO_RECEIVERS, e, annotation, receivers);
+      return null;
+    }
+    for (AnnotationValue annotationValue : values) {
       Object value = annotationValue.getValue();
       if (!(value instanceof TypeMirror) || ((TypeMirror) value).getKind() != TypeKind.DECLARED) {
         // Either this is a malformed annotation or it references an inexistant class,

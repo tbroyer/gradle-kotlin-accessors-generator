@@ -594,4 +594,27 @@ public class Bar {}
         .onLine(5)
         .atColumn(55);
   }
+
+  @Test
+  void emptyReceivers() {
+    var sourceFile =
+        JavaFileObjects.forSourceString(
+            "pkg.Bar",
+            /* language=java */
+            """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = {})
+public class Bar {}
+""");
+    var compilation = getCompiler().compile(sourceFile);
+    assertThat(compilation).failed();
+    assertThat(compilation)
+        .hadErrorContaining(GenerateKotlinAccessorsProcessor.ERROR_NO_RECEIVERS)
+        .inFile(sourceFile)
+        .onLine(5)
+        .atColumn(52);
+  }
 }
