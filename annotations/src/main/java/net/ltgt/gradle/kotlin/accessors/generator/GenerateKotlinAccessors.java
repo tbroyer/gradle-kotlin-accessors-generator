@@ -26,4 +26,6 @@ public @interface GenerateKotlinAccessors {
   String name();
 
   Class<?>[] receivers();
+
+  String generatedClassName() default "";
 }

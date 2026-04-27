@@ -109,6 +109,65 @@ public class %1$sBar {
   }
 
   @Test
+  void generatedClassName() {
+    var compilation =
+        getCompiler()
+            .compile(
+                JavaFileObjects.forSourceString(
+                    "pkg.Foo",
+                    /* language=java */
+                    """
+package pkg;
+
+public class Foo {}
+"""),
+                JavaFileObjects.forSourceString(
+                    "pkg.Bar",
+                    /* language=java */
+                    """
+package pkg;
+
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
+
+@GenerateKotlinAccessors(name = "bar", receivers = Foo.class, generatedClassName = "BarKt")
+public interface Bar {}
+"""));
+    assertThat(compilation).succeededWithoutWarnings();
+    assertThat(compilation)
+        .generatedSourceFile("pkg.BarKt")
+        .hasSourceEquivalentTo(
+            JavaFileObjects.forSourceString(
+                "pkg.BarKt",
+                    /* language=java */
+                    """
+package pkg;
+
+%3$s // We don't really care about the metadata here, it'll be tested in the example project
+@org.gradle.api.Generated
+public class BarKt {
+  public static void bar(pkg.Foo $this$bar, %1$s<? super pkg.Bar> configure) {
+    ((%2$s) $this$bar).getExtensions().configure("bar", configure);
+  }
+
+  public static pkg.Bar getBar(pkg.Foo $this$bar) {
+    return (pkg.Bar) ((%2$s) $this$bar).getExtensions().getByName("bar");
+  }
+}
+"""
+                    .formatted(
+                        GenerateKotlinAccessorsProcessor.ACTION,
+                        GenerateKotlinAccessorsProcessor.EXTENSION_AWARE,
+                        GenerateKotlinAccessorsProcessor.generateKotlinMetadata(
+                            /* language= */ "bar",
+                            "pkg/Bar",
+                            "pkg/Bar",
+                            List.of(Receiver.create("pkg/Foo", "pkg/Foo")),
+                            "getBar"))));
+    assertThat(compilation)
+        .generatedFile(StandardLocation.CLASS_OUTPUT, "META-INF/foo.kotlin_module");
+  }
+
+  @Test
   void duplicatedReceiver() {
     var sourceFile =
         JavaFileObjects.forSourceString(

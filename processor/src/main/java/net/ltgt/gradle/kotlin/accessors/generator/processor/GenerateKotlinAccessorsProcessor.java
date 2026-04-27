@@ -44,6 +44,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
@@ -98,6 +99,10 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   @VisibleForTesting
   static final String ERROR_BAD_EXTENSION_NAME =
       ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier";
+
+  @VisibleForTesting
+  static final String ERROR_BAD_GENERATED_CLASS_NAME =
+      ANNOTATION_SIMPLE_NAME + ".generatedClassName is not a valid identifier";
 
   @VisibleForTesting
   static final String ERROR_PRIVATE_EXTENSION_NAME =
@@ -197,9 +202,12 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       if (receivers == null) {
         continue;
       }
+      String className = getGeneratedClassName(e, annotation);
+      if (className == null) {
+        continue;
+      }
       String packageName =
           processingEnv.getElementUtils().getPackageOf(e).getQualifiedName().toString();
-      String className = GENERATED_CLASS_PREFIX + e.getSimpleName();
       generateKotlinExtensions(packageName, className, (TypeElement) e, extensionName, receivers);
       packages.computeIfAbsent(packageName, ignored -> new ArrayList<>()).add(className);
     }
@@ -242,6 +250,24 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
       return null;
     }
     return extensionName;
+  }
+
+  private @Nullable String getGeneratedClassName(Element e, AnnotationMirror annotation) {
+    AnnotationValue annotationValue = getAnnotationValue(annotation, "generatedClassName");
+    if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
+      // Let JavaC emit the error for the missing attribute or bad type
+      return null;
+    }
+    String className = (String) annotationValue.getValue();
+    if (className.isEmpty()) {
+      className = GENERATED_CLASS_PREFIX + e.getSimpleName();
+    } else if (!SourceVersion.isIdentifier(className)
+        || SourceVersion.isKeyword(className /*, processingEnv.getSourceVersion()*/)) {
+      processingEnv
+          .getMessager()
+          .printMessage(Kind.ERROR, ERROR_BAD_GENERATED_CLASS_NAME, e, annotation, annotationValue);
+    }
+    return className;
   }
 
   private void generateKotlinExtensions(
@@ -487,9 +513,10 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         .orElseThrow(IllegalArgumentException::new);
   }
 
-  private static @Nullable AnnotationValue getAnnotationValue(
-      AnnotationMirror annotation, String value) {
-    return annotation.getElementValues().entrySet().stream()
+  private @Nullable AnnotationValue getAnnotationValue(AnnotationMirror annotation, String value) {
+    Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues =
+        processingEnv.getElementUtils().getElementValuesWithDefaults(annotation);
+    return elementValues.entrySet().stream()
         .filter(entry -> entry.getKey().getSimpleName().contentEquals(value))
         .map(Map.Entry::getValue)
         .findFirst()
