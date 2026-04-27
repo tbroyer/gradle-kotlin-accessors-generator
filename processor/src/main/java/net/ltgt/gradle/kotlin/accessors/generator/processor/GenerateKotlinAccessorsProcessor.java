@@ -176,7 +176,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
                   ERROR_MISSING_RECEIVER_TYPE,
                   e,
                   annotation,
-                  getAnnotationValue(annotation, "receivers"));
+                  getAnnotationValue(annotation.getElementValues(), "receivers"));
         }
       } else {
         generateKotlinModuleFiles();
@@ -194,15 +194,17 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         continue;
       }
       AnnotationMirror annotation = getAnnotationMirror(e);
-      String extensionName = getExtensionName(e, annotation);
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues =
+          processingEnv.getElementUtils().getElementValuesWithDefaults(annotation);
+      String extensionName = getExtensionName(e, annotation, elementValues);
       if (extensionName == null) {
         continue;
       }
-      Set<TypeElement> receivers = getReceivers(e, annotation);
+      Set<TypeElement> receivers = getReceivers(e, annotation, elementValues);
       if (receivers == null) {
         continue;
       }
-      String className = getGeneratedClassName(e, annotation);
+      String className = getGeneratedClassName(e, annotation, elementValues);
       if (className == null) {
         continue;
       }
@@ -229,8 +231,11 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     }
   }
 
-  private @Nullable String getExtensionName(Element e, AnnotationMirror annotation) {
-    AnnotationValue annotationValue = getAnnotationValue(annotation, "name");
+  private @Nullable String getExtensionName(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    AnnotationValue annotationValue = getAnnotationValue(elementValues, "name");
     if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
       // Let JavaC emit the error for the missing attribute or bad type
       return null;
@@ -252,8 +257,11 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     return extensionName;
   }
 
-  private @Nullable String getGeneratedClassName(Element e, AnnotationMirror annotation) {
-    AnnotationValue annotationValue = getAnnotationValue(annotation, "generatedClassName");
+  private @Nullable String getGeneratedClassName(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    AnnotationValue annotationValue = getAnnotationValue(elementValues, "generatedClassName");
     if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
       // Let JavaC emit the error for the missing attribute or bad type
       return null;
@@ -406,8 +414,11 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   @SuppressWarnings("unchecked")
-  private @Nullable Set<TypeElement> getReceivers(Element e, AnnotationMirror annotation) {
-    AnnotationValue receivers = getAnnotationValue(annotation, "receivers");
+  private @Nullable Set<TypeElement> getReceivers(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    AnnotationValue receivers = getAnnotationValue(elementValues, "receivers");
     if (receivers == null || !(receivers.getValue() instanceof List)) {
       // Let JavaC emit the error for the missing attribute or bad type
       return null;
@@ -513,9 +524,8 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         .orElseThrow(IllegalArgumentException::new);
   }
 
-  private @Nullable AnnotationValue getAnnotationValue(AnnotationMirror annotation, String value) {
-    Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues =
-        processingEnv.getElementUtils().getElementValuesWithDefaults(annotation);
+  private static @Nullable AnnotationValue getAnnotationValue(
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues, String value) {
     return elementValues.entrySet().stream()
         .filter(entry -> entry.getKey().getSimpleName().contentEquals(value))
         .map(Map.Entry::getValue)
