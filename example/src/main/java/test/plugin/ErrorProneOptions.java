@@ -15,10 +15,6 @@
  */
 package test.plugin;
 
-import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-import org.gradle.api.tasks.compile.CompileOptions;
-
-@GenerateKotlinAccessors(name = ErrorProneOptions.NAME, receivers = CompileOptions.class)
 public abstract class ErrorProneOptions {
   public static final String NAME = "errorprone";
 

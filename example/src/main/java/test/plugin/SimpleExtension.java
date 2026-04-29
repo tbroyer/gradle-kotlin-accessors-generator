@@ -15,9 +15,6 @@
  */
 package test.plugin;
 
-import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-
-@GenerateKotlinAccessors(name = SimpleExtension.NAME, receivers = TestPlugin.TestExtension.class)
 public interface SimpleExtension {
   String NAME = "simple";
 

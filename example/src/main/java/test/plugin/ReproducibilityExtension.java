@@ -15,13 +15,6 @@
  */
 package test.plugin;
 
-import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-import org.gradle.api.tasks.bundling.Tar;
-import org.gradle.api.tasks.bundling.Zip;
-
-@GenerateKotlinAccessors(
-    name = ReproducibilityExtension.NAME,
-    receivers = {Zip.class, Tar.class})
 public class ReproducibilityExtension {
   public static final String NAME = "reproducibility";
 

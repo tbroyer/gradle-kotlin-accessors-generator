@@ -15,10 +15,6 @@
  */
 package test.plugin;
 
-import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-import org.gradle.api.distribution.Distribution;
-
-@GenerateKotlinAccessors(name = DistributionExtension.NAME, receivers = Distribution.class)
 public interface DistributionExtension {
   static final String NAME = "testPlugin";
 

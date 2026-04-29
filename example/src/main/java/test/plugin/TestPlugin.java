@@ -15,14 +15,41 @@
  */
 package test.plugin;
 
+import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.distribution.Distribution;
 import org.gradle.api.distribution.DistributionContainer;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.tasks.bundling.Tar;
 import org.gradle.api.tasks.bundling.Zip;
+import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 
+@GenerateKotlinAccessors(
+    className = "TestPluginKt",
+    extensions = {
+      @GenerateKotlinAccessors.Extension(
+          name = ErrorProneOptions.NAME,
+          extended = CompileOptions.class,
+          extension = ErrorProneOptions.class),
+      @GenerateKotlinAccessors.Extension(
+          name = NullAwayExtension.NAME,
+          extended = ErrorProneOptions.class,
+          extension = NullAwayExtension.class),
+      @GenerateKotlinAccessors.Extension(
+          name = ReproducibilityExtension.NAME,
+          extension = ReproducibilityExtension.class,
+          extended = {Zip.class, Tar.class}),
+      @GenerateKotlinAccessors.Extension(
+          name = DistributionExtension.NAME,
+          extension = DistributionExtension.class,
+          extended = Distribution.class),
+      @GenerateKotlinAccessors.Extension(
+          name = SimpleExtension.NAME,
+          extension = SimpleExtension.class,
+          extended = TestPlugin.TestExtension.class),
+    })
 public class TestPlugin implements Plugin<Project> {
   @Override
   public void apply(Project project) {

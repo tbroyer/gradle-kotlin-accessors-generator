@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,9 +34,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
@@ -46,9 +47,9 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import kotlin.Metadata;
@@ -88,35 +89,31 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   static final String KOTLIN_MODULE_NAME =
       "net.ltgt.gradle.kotlin.accessors.generator.kotlinModuleName";
 
-  @VisibleForTesting static final String GENERATED_CLASS_PREFIX = "$GradleKotlinAccessors$";
-  @VisibleForTesting static final String EXTENSION_AWARE = "org.gradle.api.plugins.ExtensionAware";
-  @VisibleForTesting static final String ACTION = "org.gradle.api.Action";
-
   @VisibleForTesting
   static final String ERROR_MISSING_KOTLIN_MODULE_NAME =
       KOTLIN_MODULE_NAME + " option must be supplied";
 
   @VisibleForTesting
-  static final String ERROR_BAD_EXTENSION_NAME =
-      ANNOTATION_SIMPLE_NAME + ".name is not a valid identifier";
+  static final String ERROR_BAD_CLASS_NAME =
+      ANNOTATION_SIMPLE_NAME + ".className is not a valid identifier";
 
   @VisibleForTesting
-  static final String ERROR_BAD_GENERATED_CLASS_NAME =
-      ANNOTATION_SIMPLE_NAME + ".generatedClassName is not a valid identifier";
+  static final String ERROR_BAD_EXTENSION_NAME =
+      ANNOTATION_SIMPLE_NAME + ".Extension.name is not a valid identifier";
 
   @VisibleForTesting
   static final String ERROR_PRIVATE_EXTENSION_NAME =
-      ANNOTATION_SIMPLE_NAME + ".name must not start with an underscore";
+      ANNOTATION_SIMPLE_NAME + ".Extension.name must not start with an underscore";
 
   @VisibleForTesting
-  static final String ERROR_MISSING_RECEIVER_TYPE =
+  static final String ERROR_MISSING_TYPE =
       GenerateKotlinAccessorsProcessor.class.getCanonicalName()
-          + " was unable to process this type because not all of the receiver types could be resolved.";
+          + " was unable to process this annotation because not all of the referenced types could be resolved.";
+
+  @VisibleForTesting static final String ERROR_EMPTY = "Cannot be empty";
 
   @VisibleForTesting
-  static final String ERROR_NO_RECEIVERS = ANNOTATION_NAME + ".receivers cannot be empty";
-
-  @VisibleForTesting static final String ERROR_ARRAY_RECEIVER = "Receivers cannot be array types";
+  static final String ERROR_ARRAY_EXTENDED = "Extensions cannot be attached to arrays";
 
   @VisibleForTesting static final String WARNING_DUPLICATE_VALUE = "Duplicate value";
 
@@ -173,13 +170,13 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
               .getMessager()
               .printMessage(
                   Kind.ERROR,
-                  ERROR_MISSING_RECEIVER_TYPE,
+                  ERROR_MISSING_TYPE,
                   e,
                   annotation,
-                  getAnnotationValue(annotation.getElementValues(), "receivers"));
+                  getAnnotationValue(annotation.getElementValues(), "extensions"));
         }
       } else {
-        generateKotlinModuleFiles();
+        generateKotlinModule();
       }
     }
   }
@@ -190,139 +187,56 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
     elements.addAll(deferredElements);
     deferredElements.clear();
     for (Element e : elements) {
-      if (!checkAnnotatedElement(e)) {
-        continue;
-      }
+      // We don't care about the annotated element itself, the annotation is self-contained
       AnnotationMirror annotation = getAnnotationMirror(e);
       Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues =
-          processingEnv.getElementUtils().getElementValuesWithDefaults(annotation);
-      String extensionName = getExtensionName(e, annotation, elementValues);
-      if (extensionName == null) {
-        continue;
-      }
-      Set<TypeElement> receivers = getReceivers(e, annotation, elementValues);
-      if (receivers == null) {
-        continue;
-      }
-      String className = getGeneratedClassName(e, annotation, elementValues);
+          annotation.getElementValues();
+      String className = getClassName(e, annotation, elementValues);
       if (className == null) {
+        continue;
+      }
+      List<Extension> extensions = getExtensions(e, annotation, elementValues);
+      if (extensions == null) {
         continue;
       }
       String packageName =
           processingEnv.getElementUtils().getPackageOf(e).getQualifiedName().toString();
-      generateKotlinExtensions(packageName, className, (TypeElement) e, extensionName, receivers);
+      generateKotlinAccessors(packageName, className, e, annotation, extensions);
       packages.computeIfAbsent(packageName, ignored -> new ArrayList<>()).add(className);
     }
   }
 
-  private boolean checkAnnotatedElement(Element e) {
-    switch (e.getKind()) {
-      case CLASS:
-      case INTERFACE:
-      case ENUM:
-        // case RECORD: // handled below
-        return true;
-      default:
-        if ("RECORD".equals(e.getKind().name())) {
-          return true;
-        }
-        // Let JavaC emit the error when checking the @Target(TYPE)
-        return false;
-    }
-  }
-
-  private @Nullable String getExtensionName(
-      Element e,
-      AnnotationMirror annotation,
-      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
-    AnnotationValue annotationValue = getAnnotationValue(elementValues, "name");
-    if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
-      // Let JavaC emit the error for the missing attribute or bad type
-      return null;
-    }
-    String extensionName = (String) annotationValue.getValue();
-    if (!SourceVersion.isIdentifier(extensionName)
-        || SourceVersion.isKeyword(extensionName /*, processingEnv.getSourceVersion()*/)) {
-      processingEnv
-          .getMessager()
-          .printMessage(Kind.ERROR, ERROR_BAD_EXTENSION_NAME, e, annotation, annotationValue);
-      return null;
-    }
-    if (extensionName.startsWith("_")) {
-      processingEnv
-          .getMessager()
-          .printMessage(Kind.ERROR, ERROR_PRIVATE_EXTENSION_NAME, e, annotation, annotationValue);
-      return null;
-    }
-    return extensionName;
-  }
-
-  private @Nullable String getGeneratedClassName(
-      Element e,
-      AnnotationMirror annotation,
-      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
-    AnnotationValue annotationValue = getAnnotationValue(elementValues, "generatedClassName");
-    if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
-      // Let JavaC emit the error for the missing attribute or bad type
-      return null;
-    }
-    String className = (String) annotationValue.getValue();
-    if (className.isEmpty()) {
-      className = GENERATED_CLASS_PREFIX + e.getSimpleName();
-    } else if (!SourceVersion.isIdentifier(className)
-        || SourceVersion.isKeyword(className /*, processingEnv.getSourceVersion()*/)) {
-      processingEnv
-          .getMessager()
-          .printMessage(Kind.ERROR, ERROR_BAD_GENERATED_CLASS_NAME, e, annotation, annotationValue);
-    }
-    return className;
-  }
-
-  private void generateKotlinExtensions(
+  private void generateKotlinAccessors(
       String packageName,
       String className,
-      TypeElement e,
-      String extensionName,
-      Set<? extends TypeElement> receivers) {
-    String getterName =
-        "get" + Character.toUpperCase(extensionName.charAt(0)) + extensionName.substring(1);
-
+      Element e,
+      @SuppressWarnings("unused") AnnotationMirror annotation,
+      List<Extension> extensions) {
     try {
       JavaFileObject javaFileObject =
           processingEnv.getFiler().createSourceFile(packageName + "." + className, e);
-      try (PrintWriter out = new PrintWriter(javaFileObject.openWriter())) {
-        out.println("package " + packageName + ";");
-        out.println();
-        out.println(
-            generateKotlinMetadata(
-                extensionName,
-                className(e),
-                className(processingEnv.getElementUtils().getBinaryName(e).toString()),
-                receivers.stream()
-                    .map(receiver -> Receiver.create(receiver, processingEnv))
-                    .collect(Collectors.toList()),
-                getterName));
-        out.println("@org.gradle.api.Generated");
-        out.println("public class " + className + " {");
-        for (TypeElement receiver : receivers) {
-          out.printf(
-              Locale.ROOT,
-              "\n"
-                  + "  public static void %1$s(%2$s $this$%1$s, %3$s<? super %4$s> configure) {\n"
-                  + "    ((%5$s) $this$%1$s).getExtensions().configure(\"%1$s\", configure);\n"
-                  + "  }\n"
-                  + "\n"
-                  + "  public static %4$s %6$s(%2$s $this$%1$s) {\n"
-                  + "    return (%4$s) ((%5$s) $this$%1$s).getExtensions().getByName(\"%1$s\");\n"
-                  + "  }\n",
-              extensionName,
-              receiver.getQualifiedName(),
-              ACTION,
-              e.getQualifiedName(),
-              EXTENSION_AWARE,
-              getterName);
+      try (Writer out = javaFileObject.openWriter()) {
+        out.write("package " + packageName + ";\n\n");
+        out.write(generateKotlinMetadata(extensions));
+        out.write("@org.gradle.api.Generated\n");
+        out.write("public class " + className + " {\n");
+        for (Extension extension : extensions) {
+          for (Type extended : extension.extended()) {
+            out.write(
+                String.format(
+                    "\npublic static %3$s %2$s(%4$s $this$%1$s) {\n"
+                        + "  return (%3$s) ((org.gradle.api.plugins.ExtensionAware) $this$%1$s).getExtensions().getByName(\"%1$s\");\n"
+                        + "}\n"
+                        + "\npublic static void %1$s(%4$s $this$%1$s, org.gradle.api.Action<? super %3$s> action) {\n"
+                        + "  ((org.gradle.api.plugins.ExtensionAware) $this$%1$s).getExtensions().configure(\"%1$s\", action);\n"
+                        + "}\n",
+                    extension.name(),
+                    extension.getterName(),
+                    extension.extension().qualifiedName(),
+                    extended.qualifiedName()));
+          }
         }
-        out.println("}");
+        out.write("}\n");
       }
     } catch (IOException ioe) {
       fatalError("Unable to create " + packageName + "." + className + ", " + ioe);
@@ -330,51 +244,50 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   @VisibleForTesting
-  static String generateKotlinMetadata(
-      String extensionName,
-      String element,
-      String elementSignatureName,
-      List<Receiver> receivers,
-      String getterName) {
-    KmType elementType = new KmType();
-    elementType.setClassifier(new KmClassifier.Class(element));
+  static String generateKotlinMetadata(List<Extension> extensions) {
+    KmType unitType = new KmType();
+    unitType.setClassifier(new KmClassifier.Class("kotlin/Unit"));
 
     KmPackage kmPackage = new KmPackage();
-    for (Receiver receiver : receivers) {
-      KmType receiverType = new KmType();
-      receiverType.setClassifier(new KmClassifier.Class(receiver.kotlinClassName()));
+    for (Extension extension : extensions) {
+      KmType extensionType = new KmType();
+      extensionType.setClassifier(new KmClassifier.Class(extension.extension().kotlinName()));
+      for (Type receiver : extension.extended()) {
+        KmType receiverType = new KmType();
+        receiverType.setClassifier(new KmClassifier.Class(receiver.kotlinName()));
 
-      KmFunction fun = new KmFunction(extensionName);
-      Attributes.setVisibility(fun, Visibility.PUBLIC);
-      fun.setReceiverParameterType(receiverType);
-      KmType actionType = new KmType();
-      actionType.setClassifier(new KmClassifier.Class(className(ACTION)));
-      actionType.getArguments().add(new KmTypeProjection(KmVariance.IN, elementType));
-      KmValueParameter param = new KmValueParameter("configure");
-      param.setType(actionType);
-      fun.getValueParameters().add(param);
-      KmType voidType = new KmType();
-      voidType.setClassifier(new KmClassifier.Class("kotlin/Unit"));
-      fun.setReturnType(voidType);
-      JvmExtensionsKt.setSignature(
-          fun,
-          new JvmMethodSignature(
-              extensionName,
-              String.format("(L%s;L%s)V", receiver.signatureClassName(), className(ACTION))));
-      kmPackage.getFunctions().add(fun);
+        KmProperty prop = new KmProperty(extension.name());
+        Attributes.setVisibility(prop, Visibility.PUBLIC);
+        Attributes.setVisibility(prop.getGetter(), Visibility.PUBLIC);
+        Attributes.setNotDefault(prop.getGetter(), true);
+        prop.setReceiverParameterType(receiverType);
+        prop.setReturnType(extensionType);
+        JvmExtensionsKt.setGetterSignature(
+            prop,
+            new JvmMethodSignature(
+                extension.getterName(),
+                String.format(
+                    "(%s)%s", receiver.signatureName(), extension.extension().signatureName())));
+        kmPackage.getProperties().add(prop);
 
-      KmProperty prop = new KmProperty(0, extensionName, 0, 0);
-      Attributes.setVisibility(prop, Visibility.PUBLIC);
-      Attributes.setVisibility(prop.getGetter(), Visibility.PUBLIC);
-      Attributes.setNotDefault(prop.getGetter(), true);
-      prop.setReceiverParameterType(receiverType);
-      prop.setReturnType(elementType);
-      JvmExtensionsKt.setGetterSignature(
-          prop,
-          new JvmMethodSignature(
-              getterName,
-              String.format("(L%s;)L%s;", receiver.signatureClassName(), elementSignatureName)));
-      kmPackage.getProperties().add(prop);
+        KmFunction fun = new KmFunction(extension.name());
+        Attributes.setVisibility(fun, Visibility.PUBLIC);
+        fun.setReceiverParameterType(receiverType);
+        KmType actionType = new KmType();
+        actionType.setClassifier(new KmClassifier.Class("org/gradle/api/Action"));
+        actionType.getArguments().add(new KmTypeProjection(KmVariance.IN, extensionType));
+        KmValueParameter param = new KmValueParameter("action");
+        param.setType(actionType);
+        fun.getValueParameters().add(param);
+        fun.setReturnType(unitType);
+        JvmExtensionsKt.setSignature(
+            fun,
+            new JvmMethodSignature(
+                extension.name(),
+                String.format(
+                    "(%s%s)V", receiver.signatureName(), extension.extension().signatureName())));
+        kmPackage.getFunctions().add(fun);
+      }
     }
     Metadata metadata =
         new KotlinClassMetadata.FileFacade(kmPackage, JVM_METADATA_VERSION, 0).write();
@@ -396,69 +309,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
             .collect(Collectors.joining(", ")));
   }
 
-  private static String className(TypeElement e) {
-    if (requireNonNull(e.getEnclosingElement()).getKind() == ElementKind.PACKAGE) {
-      return e.getQualifiedName().toString().replace('.', '/');
-    }
-    return className((TypeElement) e.getEnclosingElement()) + "." + e.getSimpleName();
-  }
-
-  private static String className(String topLevelName) {
-    return topLevelName.replace('.', '/');
-  }
-
-  @SuppressWarnings("unchecked")
-  private @Nullable Set<TypeElement> getReceivers(
-      Element e,
-      AnnotationMirror annotation,
-      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
-    AnnotationValue receivers = getAnnotationValue(elementValues, "receivers");
-    if (receivers == null || !(receivers.getValue() instanceof List)) {
-      // Let JavaC emit the error for the missing attribute or bad type
-      return null;
-    }
-    Set<TypeElement> elements = new LinkedHashSet<>();
-    List<? extends AnnotationValue> values = (List<? extends AnnotationValue>) receivers.getValue();
-    if (values.isEmpty()) {
-      processingEnv
-          .getMessager()
-          .printMessage(Kind.ERROR, ERROR_NO_RECEIVERS, e, annotation, receivers);
-      return null;
-    }
-    for (AnnotationValue annotationValue : values) {
-      Object value = annotationValue.getValue();
-      if (!(value instanceof TypeMirror)) {
-        // Either this is a malformed annotation or it references an inexistant class,
-        // so defer processing, and JavaC might emit the error
-        deferredElements.add(e);
-        return null;
-      }
-      TypeMirror typeMirror = (TypeMirror) value;
-      switch (typeMirror.getKind()) {
-        case DECLARED:
-          break;
-        case ERROR:
-          deferredElements.add(e);
-          return null;
-        case ARRAY:
-          processingEnv
-              .getMessager()
-              .printMessage(Kind.ERROR, ERROR_ARRAY_RECEIVER, e, annotation, annotationValue);
-          return null;
-        default:
-          // Let JavaC emit the error for the bad type
-          return null;
-      }
-      if (!elements.add((TypeElement) processingEnv.getTypeUtils().asElement(typeMirror))) {
-        processingEnv
-            .getMessager()
-            .printMessage(Kind.WARNING, WARNING_DUPLICATE_VALUE, e, annotation, annotationValue);
-      }
-    }
-    return elements;
-  }
-
-  static String escape(String value) {
+  private static String escape(String value) {
     return value
         .chars()
         .mapToObj(
@@ -466,7 +317,7 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
               switch (c) {
                 case '"':
                 case '\\':
-                  return "\\" + Character.toString((char) c);
+                  return "\\" + (char) c;
                 case '\n':
                   return "\\n";
                 case '\r':
@@ -482,33 +333,33 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         .collect(Collectors.joining("", "\"", "\""));
   }
 
-  private void generateKotlinModuleFiles() {
-    Filer filer = processingEnv.getFiler();
+  private void generateKotlinModule() {
     String resourceFile = "META-INF/" + requireNonNull(kotlinModuleName) + ".kotlin_module";
-    try {
-      FileObject fileObject = filer.createResource(StandardLocation.CLASS_OUTPUT, "", resourceFile);
-      try (OutputStream out = fileObject.openOutputStream()) {
-        KmModule kotlinModule = new KmModule();
-        packages.forEach(
-            (packageName, classNames) ->
-                kotlinModule
-                    .getPackageParts()
-                    .put(
-                        packageName,
-                        new KmPackageParts(
-                            classNames.stream()
-                                .map(className -> className(packageName + "." + className))
-                                .collect(Collectors.toList()),
-                            Collections.emptyMap())));
-        out.write(new KotlinModuleMetadata(kotlinModule, JVM_METADATA_VERSION).write());
-      }
+    try (OutputStream out =
+        processingEnv
+            .getFiler()
+            .createResource(StandardLocation.CLASS_OUTPUT, "", resourceFile)
+            .openOutputStream()) {
+      KmModule kotlinModule = new KmModule();
+      packages.forEach(
+          (packageName, classNames) ->
+              kotlinModule
+                  .getPackageParts()
+                  .put(
+                      packageName,
+                      new KmPackageParts(
+                          classNames.stream()
+                              .map(className -> packageName.replace('.', '/') + "/" + className)
+                              .collect(Collectors.toList()),
+                          Collections.emptyMap())));
+      out.write(new KotlinModuleMetadata(kotlinModule, JVM_METADATA_VERSION).write());
     } catch (IOException e) {
       fatalError("Unable to create " + resourceFile + ", " + e);
     }
   }
 
-  private static AnnotationMirror getAnnotationMirror(Element element) {
-    return element.getAnnotationMirrors().stream()
+  private AnnotationMirror getAnnotationMirror(Element e) {
+    return e.getAnnotationMirrors().stream()
         .filter(
             annotationMirror ->
                 ((TypeElement) annotationMirror.getAnnotationType().asElement())
@@ -518,7 +369,159 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
         .orElseThrow(IllegalArgumentException::new);
   }
 
-  private static @Nullable AnnotationValue getAnnotationValue(
+  private @Nullable String getClassName(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    return getJavaIdentifier(e, annotation, elementValues, "className", ERROR_BAD_CLASS_NAME, null);
+  }
+
+  private @Nullable List<Extension> getExtensions(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    AnnotationValue value = getAnnotationValue(elementValues, "extensions");
+    if (value == null || !(value.getValue() instanceof List)) {
+      // Let JavaC emit the error for the missing attribute or bad type
+      return null;
+    }
+    @SuppressWarnings("unchecked")
+    List<? extends AnnotationValue> values = ((List<? extends AnnotationValue>) value.getValue());
+    if (values.isEmpty()) {
+      processingEnv.getMessager().printMessage(Kind.ERROR, ERROR_EMPTY, e, annotation, value);
+    }
+    List<Extension> extensions = new ArrayList<>(values.size());
+    for (AnnotationValue extension : values) {
+      Object v = extension.getValue();
+      if (!(v instanceof AnnotationMirror)) {
+        // Let JavaC emit the error for the bad type
+        return null;
+      }
+      elementValues = ((AnnotationMirror) v).getElementValues();
+      String extensionName = getExtensionName(e, annotation, elementValues);
+      Type extensionType = getExtensionType(e, annotation, elementValues);
+      Set<Type> extendedTypes = getExtendedTypes(e, annotation, elementValues);
+      if (extensionName == null || extensionType == null || extendedTypes == null) {
+        return null;
+      }
+      extensions.add(Extension.create(extensionName, extensionType, extendedTypes));
+    }
+    return extensions;
+  }
+
+  private @Nullable String getExtensionName(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    return getJavaIdentifier(
+        e,
+        annotation,
+        elementValues,
+        "name",
+        ERROR_BAD_EXTENSION_NAME,
+        name -> name.startsWith("_") ? ERROR_PRIVATE_EXTENSION_NAME : null);
+  }
+
+  private @Nullable Type getExtensionType(
+      Element e,
+      @SuppressWarnings("unused") AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    AnnotationValue annotationValue = getAnnotationValue(elementValues, "extension");
+    if (annotationValue == null) {
+      // Let JavaC emit the error for the missing attribute
+      return null;
+    }
+    Object v = annotationValue.getValue();
+    if (!(v instanceof TypeMirror) || ((TypeMirror) v).getKind() != TypeKind.DECLARED) {
+      // Either this is a malformed annotation or it references an inexistant class,
+      // so defer processing, and JavaC might emit the error
+      deferredElements.add(e);
+      return null;
+    }
+    TypeMirror value = (TypeMirror) annotationValue.getValue();
+    return Type.create((TypeElement) processingEnv.getTypeUtils().asElement(value));
+  }
+
+  private @Nullable Set<Type> getExtendedTypes(
+      Element e,
+      AnnotationMirror annotation,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues) {
+    AnnotationValue extended = getAnnotationValue(elementValues, "extended");
+    if (extended == null || !(extended.getValue() instanceof List)) {
+      // Let JavaC emit the error for the missing attribute or bad type
+      return null;
+    }
+    Set<Type> elements = new LinkedHashSet<>();
+    @SuppressWarnings("unchecked")
+    List<? extends AnnotationValue> values = (List<? extends AnnotationValue>) extended.getValue();
+    if (values.isEmpty()) {
+      processingEnv.getMessager().printMessage(Kind.ERROR, ERROR_EMPTY, e, annotation, extended);
+    }
+    for (AnnotationValue annotationValue : values) {
+      Object value = annotationValue.getValue();
+      if (!(value instanceof TypeMirror)) {
+        // Either this is a malformed annotation or it references an inexistant class,
+        // so defer processing, and JavaC might emit the error
+        deferredElements.add(e);
+        return null;
+      }
+      TypeMirror typeMirror = (TypeMirror) value;
+      switch (typeMirror.getKind()) {
+        case ERROR:
+          deferredElements.add(e);
+          return null;
+        case DECLARED:
+          break;
+        case ARRAY:
+          processingEnv
+              .getMessager()
+              .printMessage(Kind.ERROR, ERROR_ARRAY_EXTENDED, e, annotation, annotationValue);
+          return null;
+        default:
+          // Let JavaC emit the error for the bad type
+          return null;
+      }
+      TypeElement element = (TypeElement) processingEnv.getTypeUtils().asElement(typeMirror);
+      if (!elements.add(Type.create(element))) {
+        processingEnv
+            .getMessager()
+            .printMessage(Kind.WARNING, WARNING_DUPLICATE_VALUE, e, annotation, annotationValue);
+      }
+    }
+    return elements;
+  }
+
+  private @Nullable String getJavaIdentifier(
+      Element e,
+      AnnotationMirror errorAnchor,
+      Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues,
+      String name,
+      String error,
+      @Nullable Function<String, @Nullable String> verifier) {
+    AnnotationValue annotationValue = getAnnotationValue(elementValues, name);
+    if (annotationValue == null || !(annotationValue.getValue() instanceof String)) {
+      // Let JavaC emit the error for the missing attribute or bad type
+      return null;
+    }
+    String value = (String) annotationValue.getValue();
+    if (!SourceVersion.isIdentifier(value)
+        || SourceVersion.isKeyword(value /*, processingEnv.getSourceVersion()*/)) {
+      processingEnv.getMessager().printMessage(Kind.ERROR, error, e, errorAnchor, annotationValue);
+      return null;
+    }
+    if (verifier != null) {
+      error = verifier.apply(value);
+      if (error != null) {
+        processingEnv
+            .getMessager()
+            .printMessage(Kind.ERROR, error, e, errorAnchor, annotationValue);
+        return null;
+      }
+    }
+    return value;
+  }
+
+  private @Nullable AnnotationValue getAnnotationValue(
       Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues, String value) {
     return elementValues.entrySet().stream()
         .filter(entry -> entry.getKey().getSimpleName().contentEquals(value))
@@ -532,20 +535,48 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   }
 
   @AutoValue
-  abstract static class Receiver {
-    static Receiver create(String kotlinClassName, String signatureClassName) {
-      return new AutoValue_GenerateKotlinAccessorsProcessor_Receiver(
-          kotlinClassName, signatureClassName);
+  abstract static class Extension {
+    @VisibleForTesting
+    static Extension create(String name, Type extension, Set<Type> extended) {
+      return new AutoValue_GenerateKotlinAccessorsProcessor_Extension(name, extension, extended);
     }
 
-    static Receiver create(TypeElement element, ProcessingEnvironment processingEnv) {
-      return create(
-          className(element),
-          className(processingEnv.getElementUtils().getBinaryName(element).toString()));
+    abstract String name();
+
+    String getterName() {
+      return "get" + name().substring(0, 1).toUpperCase(Locale.ENGLISH) + name().substring(1);
     }
 
-    abstract String kotlinClassName();
+    abstract Type extension();
 
-    abstract String signatureClassName();
+    @SuppressWarnings("AutoValueImmutableFields")
+    abstract Set<Type> extended();
+  }
+
+  @AutoValue
+  abstract static class Type {
+    private static Type create(TypeElement e) {
+      return create(e.getQualifiedName().toString(), kotlinName(e));
+    }
+
+    @VisibleForTesting
+    static Type create(String qualifiedName, String kotlinName) {
+      return new AutoValue_GenerateKotlinAccessorsProcessor_Type(qualifiedName, kotlinName);
+    }
+
+    private static String kotlinName(TypeElement e) {
+      if (requireNonNull(e.getEnclosingElement()).getKind() == ElementKind.PACKAGE) {
+        return e.getQualifiedName().toString().replace('.', '/');
+      }
+      return kotlinName((TypeElement) e.getEnclosingElement()) + "." + e.getSimpleName();
+    }
+
+    abstract String qualifiedName();
+
+    abstract String kotlinName();
+
+    String signatureName() {
+      return "L" + kotlinName().replace('.', '$') + ";";
+    }
   }
 }

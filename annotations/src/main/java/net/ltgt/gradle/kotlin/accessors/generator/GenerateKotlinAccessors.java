@@ -20,12 +20,18 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.PACKAGE})
 @Retention(RetentionPolicy.SOURCE)
 public @interface GenerateKotlinAccessors {
-  String name();
+  String className();
 
-  Class<?>[] receivers();
+  Extension[] extensions();
 
-  String generatedClassName() default "";
+  @interface Extension {
+    String name();
+
+    Class<?> extension();
+
+    Class<?>[] extended();
+  }
 }

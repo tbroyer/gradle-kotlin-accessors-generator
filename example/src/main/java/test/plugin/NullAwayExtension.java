@@ -15,9 +15,6 @@
  */
 package test.plugin;
 
-import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
-
-@GenerateKotlinAccessors(name = NullAwayExtension.NAME, receivers = ErrorProneOptions.class)
 public abstract class NullAwayExtension {
   public static final String NAME = "nullaway";
 
