@@ -19,6 +19,14 @@ but when you write it in Java, this forces you to add Kotlin to your project onl
 
 This annotation processor is meant to "fix" that by generating the accessors from plain Java code.
 
+## Compatibility
+
+The annotation processor requires **JDK 8** at a minimum.
+
+The generated code is compatible with Java 8, and the Kotlin metadata targets Kotlin 1.4.
+
+Overall, this makes the processor and the generated code compatible down to **Gradle 6.8**.
+
 ## Usage
 
 1. Add the `annotations` library as a `compileOnly` dependency, and the `processor` to your annotation processor path:
