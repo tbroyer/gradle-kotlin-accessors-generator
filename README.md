@@ -33,7 +33,7 @@ Overall, this makes the processor and the generated code compatible down to **Gr
 
     ```kotlin
     dependencies {
-        compileOnly("net.ltgt.gradle.kotlin-accessors-generator:annocations:${gkag.version}")
+        compileOnly("net.ltgt.gradle.kotlin-accessors-generator:annotations:${gkag.version}")
         annotationProcessor("net.ltgt.gradle.kotlin-accesors-generator:processor:${gkag.version}")
     }
     ```
