@@ -11,6 +11,6 @@ dependencyResolutionManagement {
     }
 }
 
-include("annotations", "processor", "example")
+include("annotations", "processor", "integTest", "example")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
