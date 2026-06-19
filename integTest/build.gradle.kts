@@ -20,10 +20,11 @@ dependencies {
     localMavenRepositories(projects.processor)
 }
 
-val prepareLocalRepo by tasks.registering(Sync::class) {
-    from(resolvableLocalMavenRepositories)
-    into(layout.buildDirectory.dir("local-maven-repo"))
-}
+val prepareLocalRepo =
+    tasks.register<Sync>("prepareLocalRepo") {
+        from(resolvableLocalMavenRepositories)
+        into(layout.buildDirectory.dir("local-maven-repo"))
+    }
 
 testing {
     suites {
