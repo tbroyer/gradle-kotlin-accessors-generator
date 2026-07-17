@@ -3,8 +3,8 @@
 autoService = "1.1.1"
 autoValue = "1.11.1"
 incapHelper = "1.0.0"
-junitJupiter = "6.1.1"
-kotlin = "2.4.0"
+junitJupiter = "6.1.2"
+kotlin = "2.4.10"
 nullaway = "0.13.7"
 
 # Versions used by build-logic
