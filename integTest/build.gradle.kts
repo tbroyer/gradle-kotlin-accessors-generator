@@ -54,7 +54,7 @@ testing {
                     val testGradleVersion = project.findProperty("test.gradle-version")
                     testGradleVersion?.also { systemProperty("test.gradle-version", testGradleVersion) }
 
-                    systemProperty("version", rootProject.version.toString())
+                    systemProperty("version", project.version.toString())
 
                     dependsOn(prepareLocalRepo) // XXX: shouldn't be necessary?
                     jvmArgumentProviders.add(

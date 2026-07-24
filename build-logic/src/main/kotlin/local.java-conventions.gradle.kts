@@ -106,6 +106,6 @@ spotless {
                 .orElseThrow()
                 .requiredVersion,
         ).reorderImports(true)
-        licenseHeaderFile(rootProject.file("LICENSE.header"))
+        licenseHeaderFile(rootProject.isolated.projectDirectory.file("LICENSE.header"))
     }
 }
