@@ -8,7 +8,7 @@ kotlin = "2.4.20"
 nullaway = "0.14.2"
 
 # Versions used by build-logic
-googleJavaFormat = "1.36.1"
+googleJavaFormat = "1.37.0"
 ktlint = "1.8.0"
 
 [libraries]
@@ -39,6 +39,6 @@ errorprone = [ "errorprone-core", "nullaway" ]
 [plugins]
 errorprone = "net.ltgt.errorprone:5.1.1"
 jvmDependencyConflictResolution = "org.gradlex.jvm-dependency-conflict-resolution:2.5"
-nullaway = "net.ltgt.nullaway:3.2.0"
+nullaway = "net.ltgt.nullaway:3.3.0"
 spotless = "com.diffplug.spotless:8.10.3"
 vanniktechMavenPublish = "com.vanniktech.maven.publish:0.37.0"
