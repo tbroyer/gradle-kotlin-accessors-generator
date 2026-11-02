@@ -49,9 +49,8 @@ public class GenerateKotlinAccessorsIntegrationTest {
       properties.store(w, null);
     }
     Files.writeString(
-        projectDir.resolve("settings.gradle.kts"),
-        /* language=kotlin */
-        """
+        projectDir.resolve("settings.gradle.kts"), /* language=kotlin */
+"""
 pluginManagement {
     includeBuild("build-logic")
 }
@@ -59,9 +58,8 @@ pluginManagement {
     Files.createDirectories(projectDir.resolve("build-logic"));
     Files.createFile(projectDir.resolve("build-logic/settings.gradle.kts"));
     Files.writeString(
-        projectDir.resolve("build-logic/build.gradle.kts"),
-            /* language=kotlin */
-            """
+        projectDir.resolve("build-logic/build.gradle.kts"), /* language=kotlin */
+"""
 plugins {
     `java-gradle-plugin`
 }
@@ -97,9 +95,9 @@ tasks {
             .formatted(testRepository, version));
     Files.createDirectories(projectDir.resolve("build-logic/src/main/java/test/plugin"));
     Files.writeString(
-        projectDir.resolve("build-logic/src/main/java/test/plugin/TestPlugin.java"),
-        /* language=java */
-        """
+        projectDir.resolve(
+            "build-logic/src/main/java/test/plugin/TestPlugin.java"), /* language=java */
+"""
 package test.plugin;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -125,9 +123,9 @@ public class TestPlugin implements Plugin<Project> {
 }
 """);
     Files.writeString(
-        projectDir.resolve("build-logic/src/main/java/test/plugin/SimpleExtension.java"),
-        /* language=java */
-        """
+        projectDir.resolve(
+            "build-logic/src/main/java/test/plugin/SimpleExtension.java"), /* language=java */
+"""
 package test.plugin;
 
 public class SimpleExtension {
@@ -137,9 +135,8 @@ public class SimpleExtension {
 }
 """);
     Files.writeString(
-        projectDir.resolve("build.gradle.kts"),
-        /* language=kotlin */
-        """
+        projectDir.resolve("build.gradle.kts"), /* language=kotlin */
+"""
 import test.plugin.simple
 
 plugins {

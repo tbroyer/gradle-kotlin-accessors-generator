@@ -54,17 +54,15 @@ class GenerateKotlinAccessorsProcessorTest {
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
+                    "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -80,9 +78,8 @@ public interface Bar {}
         .generatedSourceFile("pkg.KotlinExtensionsKt")
         .hasSourceEquivalentTo(
             JavaFileObjects.forSourceString(
-                "pkg.KotlinExtensionsKt",
-                    /* language=java */
-                    """
+                "pkg.KotlinExtensionsKt", /* language=java */
+"""
 package pkg;
 
 %s // We don't really care about the metadata here, it'll be tested in the example project
@@ -114,41 +111,36 @@ public class KotlinExtensionsKt {
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
+                    "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 public class Bar {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Baz",
-                    /* language=java */
-                    """
+                    "pkg.Baz", /* language=java */
+"""
 package pkg;
 
 public class Baz {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Qux",
-                    /* language=java */
-                    """
+                    "pkg.Qux", /* language=java */
+"""
 package pkg;
 
 public class Qux {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.package-info",
-                    /* language=java */
-                    """
+                    "pkg.package-info", /* language=java */
+"""
 @GenerateKotlinAccessors(className = "KotlinExtensionsKt", extensions = {
     @Extension(name = "bar", extension = Bar.class, extended = Foo.class),
     @Extension(name = "qux", extension = Qux.class, extended = Baz.class)
@@ -163,9 +155,8 @@ import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors.Extens
         .generatedSourceFile("pkg.KotlinExtensionsKt")
         .hasSourceEquivalentTo(
             JavaFileObjects.forSourceString(
-                "pkg.KotlinExtensionsKt",
-                    /* language=java */
-                    """
+                "pkg.KotlinExtensionsKt", /* language=java */
+"""
 package pkg;
 
 %s // We don't really care about the metadata here, it'll be tested in the example project
@@ -209,17 +200,15 @@ public class KotlinExtensionsKt {
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
+                    "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -231,17 +220,15 @@ import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors.Extens
 public class Bar {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Baz",
-                    /* language=java */
-                    """
+                    "pkg.Baz", /* language=java */
+"""
 package pkg;
 
 public class Baz {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Qux",
-                    /* language=java */
-                    """
+                    "pkg.Qux", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -260,9 +247,8 @@ public class Qux {}
   void duplicatedReceiver() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -277,9 +263,8 @@ public interface Bar {}
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
@@ -296,9 +281,8 @@ public class Foo {}
         .generatedSourceFile("pkg.KotlinExtensionsKt")
         .hasSourceEquivalentTo(
             JavaFileObjects.forSourceString(
-                "pkg.KotlinExtensionsKt",
-                    /* language=java */
-                    """
+                "pkg.KotlinExtensionsKt", /* language=java */
+"""
 package pkg;
 
 %s // We don't really care about the metadata here, it'll be tested in the example project
@@ -330,17 +314,15 @@ public class KotlinExtensionsKt {
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
+                    "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -357,9 +339,8 @@ public interface Bar extends ExtensionAware {}
         .generatedSourceFile("pkg.KotlinExtensionsKt")
         .hasSourceEquivalentTo(
             JavaFileObjects.forSourceString(
-                "pkg.KotlinExtensionsKt",
-                    /* language=java */
-                    """
+                "pkg.KotlinExtensionsKt", /* language=java */
+"""
 package pkg;
 
 %s // We don't really care about the metadata here, it'll be tested in the example project
@@ -391,9 +372,8 @@ public class KotlinExtensionsKt {
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {
@@ -401,9 +381,8 @@ public class Foo {
 }
 """),
                 JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
+                    "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -419,9 +398,8 @@ public interface Bar {}
         .generatedSourceFile("pkg.KotlinExtensionsKt")
         .hasSourceEquivalentTo(
             JavaFileObjects.forSourceString(
-                "pkg.KotlinExtensionsKt",
-                    /* language=java */
-                    """
+                "pkg.KotlinExtensionsKt", /* language=java */
+"""
 package pkg;
 
 %s // We don't really care about the metadata here, it'll be tested in the example project
@@ -454,9 +432,8 @@ public class KotlinExtensionsKt {
             .withOptions()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
@@ -470,9 +447,8 @@ public class Foo {}
   void badClassName() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -487,9 +463,8 @@ public interface Bar {}
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
@@ -507,9 +482,8 @@ public class Foo {}
   void badExtensionName() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -524,9 +498,8 @@ public interface Bar {}
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
@@ -544,9 +517,8 @@ public class Foo {}
   void badExtensionName_private() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -561,9 +533,8 @@ public interface Bar {}
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}
@@ -581,9 +552,8 @@ public class Foo {}
   void inexistantExtension() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Foo",
-            /* language=java */
-            """
+            "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -612,9 +582,8 @@ public interface Foo {}
   void inexistantReceiver() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -660,9 +629,9 @@ public interface Bar {}
           try {
             generated = processingEnv.getFiler().createSourceFile("pkg.Bar");
             try (var out = generated.openWriter()) {
+              /* language=java */
               out.write(
-                  /* language=java */
-                  """
+"""
 package pkg;
 
 public class Bar {}
@@ -681,9 +650,8 @@ public class Bar {}
             .withProcessors(new GenerateKotlinAccessorsProcessor(), new TestProcessor())
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -716,9 +684,9 @@ public class Foo {}
       public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
           try (var out = processingEnv.getFiler().createSourceFile("pkg.Bar").openWriter()) {
+            /* language=java */
             out.write(
-                /* language=java */
-                """
+"""
 package pkg;
 
 public class Bar {}
@@ -733,9 +701,8 @@ public class Bar {}
 
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Foo",
-            /* language=java */
-            """
+            "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -779,9 +746,9 @@ public class Foo {}
           try {
             generated = processingEnv.getFiler().createSourceFile("pkg.Foo");
             try (var out = generated.openWriter()) {
+              /* language=java */
               out.write(
-                  /* language=java */
-                  """
+"""
 package pkg;
 
 public class Foo {}
@@ -800,9 +767,8 @@ public class Foo {}
             .withProcessors(new GenerateKotlinAccessorsProcessor(), new TestProcessor())
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Bar",
-                    /* language=java */
-                    """
+                    "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -835,9 +801,9 @@ public class Bar {}
       public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
           try (var out = processingEnv.getFiler().createSourceFile("pkg.Foo").openWriter()) {
+            /* language=java */
             out.write(
-                /* language=java */
-                """
+"""
 package pkg;
 
 public class Foo {}
@@ -852,9 +818,8 @@ public class Foo {}
 
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -881,9 +846,8 @@ public class Bar {}
   void emptyExtensions() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -904,9 +868,8 @@ public class Bar {}
   void emptyReceivers() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -930,9 +893,8 @@ public class Bar {}
   void arrayReceiver() {
     var sourceFile =
         JavaFileObjects.forSourceString(
-            "pkg.Bar",
-            /* language=java */
-            """
+            "pkg.Bar", /* language=java */
+"""
 package pkg;
 
 import net.ltgt.gradle.kotlin.accessors.generator.GenerateKotlinAccessors;
@@ -947,9 +909,8 @@ public class Bar {}
         getCompiler()
             .compile(
                 JavaFileObjects.forSourceString(
-                    "pkg.Foo",
-                    /* language=java */
-                    """
+                    "pkg.Foo", /* language=java */
+"""
 package pkg;
 
 public class Foo {}

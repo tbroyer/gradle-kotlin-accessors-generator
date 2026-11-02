@@ -56,33 +56,28 @@ public class TestPlugin implements Plugin<Project> {
     project
         .getTasks()
         .withType(JavaCompile.class)
-        .configureEach(
-            javaCompile -> {
-              ErrorProneOptions options =
-                  ((ExtensionAware) javaCompile.getOptions())
-                      .getExtensions()
-                      .create(ErrorProneOptions.NAME, ErrorProneOptions.class);
-              ((ExtensionAware) options)
+        .configureEach(javaCompile -> {
+          ErrorProneOptions options =
+              ((ExtensionAware) javaCompile.getOptions())
                   .getExtensions()
-                  .create(NullAwayExtension.NAME, NullAwayExtension.class);
-            });
+                  .create(ErrorProneOptions.NAME, ErrorProneOptions.class);
+          ((ExtensionAware) options)
+              .getExtensions()
+              .create(NullAwayExtension.NAME, NullAwayExtension.class);
+        });
 
     project
         .getTasks()
         .withType(Zip.class)
-        .configureEach(
-            zip -> {
-              zip.getExtensions()
-                  .create(ReproducibilityExtension.NAME, ReproducibilityExtension.class);
-            });
+        .configureEach(zip -> {
+          zip.getExtensions().create(ReproducibilityExtension.NAME, ReproducibilityExtension.class);
+        });
     project
         .getTasks()
         .withType(Tar.class)
-        .configureEach(
-            tar -> {
-              tar.getExtensions()
-                  .create(ReproducibilityExtension.NAME, ReproducibilityExtension.class);
-            });
+        .configureEach(tar -> {
+          tar.getExtensions().create(ReproducibilityExtension.NAME, ReproducibilityExtension.class);
+        });
 
     project
         .getPluginManager()
@@ -92,15 +87,14 @@ public class TestPlugin implements Plugin<Project> {
               project
                   .getExtensions()
                   .getByType(DistributionContainer.class)
-                  .configureEach(
-                      distribution -> {
-                        ((ExtensionAware) distribution)
-                            .getExtensions()
-                            .create(
-                                DistributionExtension.class,
-                                DistributionExtension.NAME,
-                                DefaultDistributionExtension.class);
-                      });
+                  .configureEach(distribution -> {
+                    ((ExtensionAware) distribution)
+                        .getExtensions()
+                        .create(
+                            DistributionExtension.class,
+                            DistributionExtension.NAME,
+                            DefaultDistributionExtension.class);
+                  });
             });
 
     TestExtension ext = project.getExtensions().create("ltgt", TestExtension.class);

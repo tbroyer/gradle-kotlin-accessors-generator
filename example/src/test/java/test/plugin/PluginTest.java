@@ -44,9 +44,8 @@ public class PluginTest {
     }
     Files.createFile(projectDir.resolve("settings.gradle.kts"));
     Files.writeString(
-        projectDir.resolve("build.gradle.kts"),
-        /* language=kotlin */
-        """
+        projectDir.resolve("build.gradle.kts"), /* language=kotlin */
+"""
 import test.plugin.errorprone
 import test.plugin.nullaway
 import test.plugin.reproducibility

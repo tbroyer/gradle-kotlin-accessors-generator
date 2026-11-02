@@ -8,7 +8,7 @@ kotlin = "2.4.21"
 nullaway = "0.14.3"
 
 # Versions used by build-logic
-googleJavaFormat = "1.36.1"
+googleJavaFormat = "2.0.0"
 ktlint = "1.8.0"
 
 [libraries]

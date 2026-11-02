@@ -312,24 +312,23 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
   private static String escape(String value) {
     return value
         .chars()
-        .mapToObj(
-            c -> {
-              switch (c) {
-                case '"':
-                case '\\':
-                  return "\\" + (char) c;
-                case '\n':
-                  return "\\n";
-                case '\r':
-                  return "\\r";
-                case '\t':
-                  return "\\t";
-                default:
-                  return isISOControl(c)
-                      ? String.format(Locale.ROOT, "\\u%04x", c)
-                      : Character.toString((char) c);
-              }
-            })
+        .mapToObj(c -> {
+          switch (c) {
+            case '"':
+            case '\\':
+              return "\\" + (char) c;
+            case '\n':
+              return "\\n";
+            case '\r':
+              return "\\r";
+            case '\t':
+              return "\\t";
+            default:
+              return isISOControl(c)
+                  ? String.format(Locale.ROOT, "\\u%04x", c)
+                  : Character.toString((char) c);
+          }
+        })
         .collect(Collectors.joining("", "\"", "\""));
   }
 
@@ -341,17 +340,16 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
             .createResource(StandardLocation.CLASS_OUTPUT, "", resourceFile)
             .openOutputStream()) {
       KmModule kotlinModule = new KmModule();
-      packages.forEach(
-          (packageName, classNames) ->
-              kotlinModule
-                  .getPackageParts()
-                  .put(
-                      packageName,
-                      new KmPackageParts(
-                          classNames.stream()
-                              .map(className -> packageName.replace('.', '/') + "/" + className)
-                              .collect(Collectors.toList()),
-                          Collections.emptyMap())));
+      packages.forEach((packageName, classNames) ->
+          kotlinModule
+              .getPackageParts()
+              .put(
+                  packageName,
+                  new KmPackageParts(
+                      classNames.stream()
+                          .map(className -> packageName.replace('.', '/') + "/" + className)
+                          .collect(Collectors.toList()),
+                      Collections.emptyMap())));
       out.write(new KotlinModuleMetadata(kotlinModule, JVM_METADATA_VERSION).write());
     } catch (IOException e) {
       fatalError("Unable to create " + resourceFile + ", " + e);
@@ -360,11 +358,10 @@ public class GenerateKotlinAccessorsProcessor extends AbstractProcessor {
 
   private AnnotationMirror getAnnotationMirror(Element e) {
     return e.getAnnotationMirrors().stream()
-        .filter(
-            annotationMirror ->
-                ((TypeElement) annotationMirror.getAnnotationType().asElement())
-                    .getQualifiedName()
-                    .contentEquals(ANNOTATION_NAME))
+        .filter(annotationMirror ->
+            ((TypeElement) annotationMirror.getAnnotationType().asElement())
+                .getQualifiedName()
+                .contentEquals(ANNOTATION_NAME))
         .findFirst()
         .orElseThrow(IllegalArgumentException::new);
   }
